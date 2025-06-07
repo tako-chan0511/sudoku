@@ -15,21 +15,15 @@
       <button
         :class="{ active: currentDifficulty === 'easy' }"
         @click="setDifficulty('easy')"
-      >
-        Easy
-      </button>
+      >Easy</button>
       <button
         :class="{ active: currentDifficulty === 'medium' }"
         @click="setDifficulty('medium')"
-      >
-        Medium
-      </button>
+      >Medium</button>
       <button
         :class="{ active: currentDifficulty === 'hard' }"
         @click="setDifficulty('hard')"
-      >
-        Hard
-      </button>
+      >Hard</button>
     </div>
 
     <!-- 数字入力パネル -->
@@ -37,22 +31,22 @@
     <div
       class="selected-display"
       :class="{ highlight: manualCandidateMode }"
-      @click="manualCandidateMode ? null : clearSelection"
+      @click="!manualCandidateMode && clearSelection"
     >
-      選択中の数字:
-      <strong>{{ selectedNumber === 0 ? '-' : selectedNumber }}</strong>
+      選択中の数字: <strong>{{ selectedNumber === 0 ? '-' : selectedNumber }}</strong>
       <button @click.stop="clearSelection" class="clear-btn">×</button>
     </div>
 
     <!-- ゲーム開始・リセットボタン -->
     <div class="init-buttons">
       <button @click="startGame" class="start-btn">ゲーム開始</button>
-      <button @click="clearPuzzle" style="margin-left: 8px;">空盤面</button>
-      <button @click="resetAll" style="margin-left: 8px;">リセット</button>
+      <button @click="clearPuzzle" style="margin-left:8px;">空盤面</button>
+      <button @click="resetAll" style="margin-left:8px;">リセット</button>
     </div>
 
     <!-- 完成時メッセージ -->
-    <div v-if="allFilled" class="congrats">Congradylations！！！</div>
+    <div v-if="allCorrect" class="congrats">Congratulations！！！</div>
+    <div v-else-if="allFilled" class="error-msg">間違いがあります。確認してください。</div>
 
     <!-- 9×9 ボードを表示 -->
     <div class="board-wrapper">
@@ -71,61 +65,58 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed } from "vue"
-import type { Cell } from "@/types/sudoku"
-import { useSudoku } from "@/composables/useSudoku"
-import SudokuCell from "@/components/SudokuCell.vue"
-import NumberPicker from "@/components/NumberPicker.vue"
+import { ref, computed } from 'vue'
+import type { Cell } from '@/types/sudoku'
+import { useSudoku } from '@/composables/useSudoku'
+import SudokuCell from '@/components/SudokuCell.vue'
+import NumberPicker from '@/components/NumberPicker.vue'
 
-// 簡単 (Easy) パズル例
-const samplePuzzleEasy: (0|1|2|3|4|5|6|7|8|9)[][] = [
-  [0,0,3, 0,2,0, 6,0,0],
-  [9,0,0, 3,0,5, 0,0,1],
-  [0,0,1, 8,0,6, 4,0,0],
-  [0,0,8, 1,0,2, 9,0,0],
-  [7,0,0, 0,0,0, 0,0,8],
-  [0,0,6, 7,0,8, 2,0,0],
-  [0,0,2, 6,0,9, 5,0,0],
-  [8,0,0, 2,0,3, 0,0,9],
-  [0,0,5, 0,1,0, 3,0,0],
-]
-
-// 中級 (Medium) パズル例
-const samplePuzzleMedium: (0|1|2|3|4|5|6|7|8|9)[][] = [
-  [0,2,0, 6,0,8, 0,0,0],
-  [5,8,0, 0,1,9, 7,0,0],
-  [0,0,0, 0,0,0, 0,3,0],
-  [0,0,1, 0,0,0, 0,6,8],
-  [0,0,8, 5,0,2, 4,0,0],
-  [7,6,0, 0,0,0, 1,0,0],
-  [0,3,0, 0,0,0, 0,0,0],
-  [0,0,7, 8,2,0, 0,5,4],
-  [0,0,0, 9,0,3, 0,2,0],
-]
-
-// 上級 (Hard) パズル例
-const samplePuzzleHard: (0|1|2|3|4|5|6|7|8|9)[][] = [
-  [0,0,0, 0,0,0, 0,0,0],
-  [0,0,0, 0,0,3, 0,8,5],
-  [0,0,1, 0,2,0, 0,0,0],
-  [0,0,0, 5,0,7, 0,0,0],
-  [0,0,4, 0,0,0, 1,0,0],
-  [0,9,0, 0,0,0, 0,0,0],
-  [5,0,0, 0,0,0, 0,7,3],
-  [0,6,0, 0,0,0, 0,0,0],
-  [0,0,0, 0,4,0, 0,0,9],
-]
-
-// 難易度ごとのパズルマップ
-const puzzlesByDifficulty = {
-  easy: [samplePuzzleEasy],
-  medium: [samplePuzzleMedium],
-  hard: [samplePuzzleHard],
+// サンプル盤面の定義 (複数パターン対応)
+const puzzlesByDifficulty: Record<"easy"|"medium"|"hard", { puzzle: number[][] }[]> = {
+  easy: [
+    { puzzle: [
+      [0,0,3,0,2,0,6,0,0],
+      [9,0,0,3,0,5,0,0,1],
+      [0,0,1,8,0,6,4,0,0],
+      [0,0,8,1,0,2,9,0,0],
+      [7,0,0,0,0,0,0,0,8],
+      [0,0,6,7,0,8,2,0,0],
+      [0,0,2,6,0,9,5,0,0],
+      [8,0,0,2,0,3,0,0,9],
+      [0,0,5,0,1,0,3,0,0]
+    ]}
+  ],
+  medium: [
+    { puzzle: [
+      [0,2,0,6,0,8,0,0,0],
+      [5,8,0,0,1,9,7,0,0],
+      [0,0,0,0,0,0,0,3,0],
+      [0,0,1,0,0,0,0,6,8],
+      [0,0,8,5,0,2,4,0,0],
+      [7,6,0,0,0,0,1,0,0],
+      [0,3,0,0,0,0,0,0,0],
+      [0,0,7,8,2,0,0,5,4],
+      [0,0,0,9,0,3,0,2,0]
+    ]}
+  ],
+  hard: [
+    { puzzle: [
+      [0,0,0,0,0,0,0,0,0],
+      [0,0,0,0,0,3,0,8,5],
+      [0,0,1,0,2,0,0,0,0],
+      [0,0,0,5,0,7,0,0,0],
+      [0,0,4,0,0,0,1,0,0],
+      [0,9,0,0,0,0,0,0,0],
+      [5,0,0,0,0,0,0,7,3],
+      [0,6,0,0,0,0,0,0,0],
+      [0,0,0,0,4,0,0,0,9]
+    ]}
+  ]
 }
 
 // 手動候補モード
 const manualCandidateMode = ref(false)
-// ユーザ選択数字
+// 選択中の数字 (0=クリア)
 const selectedNumber = ref(0)
 // 現在の難易度
 const currentDifficulty = ref<keyof typeof puzzlesByDifficulty>('easy')
@@ -133,15 +124,15 @@ const currentDifficulty = ref<keyof typeof puzzlesByDifficulty>('easy')
 // useSudoku インスタンス
 let { board, flatCells, setCellValue, toggleUserCandidate, resetBoard, updateAllCandidates } = useSudoku()
 
-/** 難易度設定のみ */
+// 難易度のみ設定
 function setDifficulty(diff: keyof typeof puzzlesByDifficulty) {
   currentDifficulty.value = diff
 }
 
-/** ゲーム開始: 指定難易度でランダム出題 */
+// ゲーム開始: 指定難易度でランダム盤面生成
 function startGame() {
   const list = puzzlesByDifficulty[currentDifficulty.value]
-  const puzzle = list[Math.floor(Math.random() * list.length)]
+  const { puzzle } = list[Math.floor(Math.random() * list.length)]
   const api = useSudoku(puzzle)
   board.value = api.board.value
   flatCells.value = api.flatCells.value
@@ -153,7 +144,7 @@ function startGame() {
   selectedNumber.value = 0
 }
 
-/** 空盤面生成 */
+// 空盤面生成
 function clearPuzzle() {
   const api = useSudoku()
   board.value = api.board.value
@@ -166,34 +157,63 @@ function clearPuzzle() {
   selectedNumber.value = 0
 }
 
-/** 全リセット */
+// リセット
 function resetAll() {
   resetBoard()
   updateAllCandidates()
   selectedNumber.value = 0
 }
 
-/** 数字選択 */
-function onNumberPicked(n: number) {
-  selectedNumber.value = n
-}
-function clearSelection() {
-  selectedNumber.value = 0
-}
+// 数字選択
+function onNumberPicked(n: number) { selectedNumber.value = n }
+function clearSelection() { selectedNumber.value = 0 }
 
-/** セルクリック */
-function onSelectCell({ row, col, val }: { row: number; col: number; val: number }) {
-  setCellValue(row, col, val as any)
+// セルクリック
+function onSelectCell({ row, col, val }: Cell) {
+  setCellValue(row, col, val)
   updateAllCandidates()
 }
 
-/** 候補トグル */
+// 候補トグル
 function onToggleCandidate({ row, col, candidate }: { row: number; col: number; candidate: number }) {
-  toggleUserCandidate(row, col, candidate as any)
+  toggleUserCandidate(row, col, candidate)
 }
 
-// 完成判定
-const allFilled = computed(() => flatCells.value.every(cell => cell.value !== 0))
+// 全マス埋まり判定
+const allFilled = computed(() => flatCells.value.every(c => c.value !== 0))
+
+// 汎用バリデータ: 最新 flatCells から行・列・ブロックをチェック
+const allCorrect = computed(() => {
+  if (!allFilled.value) return false
+  // flatCells からグリッドを構築
+  const grid: number[][] = Array.from({ length: 9 }, () => Array(9).fill(0))
+  flatCells.value.forEach(c => { grid[c.row][c.col] = c.value })
+
+  const isValidGroup = (nums: number[]) => new Set(nums).size === 9 && nums.every(n => n >= 1 && n <= 9)
+
+  // 行チェック
+  for (let r = 0; r < 9; r++) {
+    if (!isValidGroup(grid[r])) return false
+  }
+  // 列チェック
+  for (let c = 0; c < 9; c++) {
+    const col = grid.map(row => row[c])
+    if (!isValidGroup(col)) return false
+  }
+  // 3×3 ブロックチェック
+  for (let br = 0; br < 3; br++) {
+    for (let bc = 0; bc < 3; bc++) {
+      const block: number[] = []
+      for (let r = br * 3; r < br * 3 + 3; r++) {
+        for (let c = bc * 3; c < bc * 3 + 3; c++) {
+          block.push(grid[r][c])
+        }
+      }
+      if (!isValidGroup(block)) return false
+    }
+  }
+  return true
+})
 </script>
 
 <style>
@@ -206,6 +226,7 @@ const allFilled = computed(() => flatCells.value.every(cell => cell.value !== 0)
 .clear-btn { padding: 1px 4px; font-size: 0.9rem; margin-left: 8px; }
 .board-wrapper { display: grid; grid-template-columns: repeat(9, 48px); grid-template-rows: repeat(9, 48px); border: 2px solid #007ACC; margin: 0 auto; }
 .congrats { margin: 12px 0; font-size: 1.2rem; color: green; font-weight: bold; }
+.error-msg { margin: 12px 0; font-size: 1rem; color: red; }
 .start-btn { background-color: #007ACC; color: white; padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; }
 .start-btn:hover { background-color: #005A9C; }
 </style>
