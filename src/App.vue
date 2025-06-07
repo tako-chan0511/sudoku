@@ -75,18 +75,20 @@ import SudokuCell from '@/components/SudokuCell.vue'
 import NumberPicker from '@/components/NumberPicker.vue'
 import { makePuzzleByDifficulty } from '@/utils/puzzleGenerator'
 
-// 手動候補モード
-const manualCandidateMode = ref(false)
-// 選択中の数字 (0=クリア)
-const selectedNumber = ref(0)
-// 現在の難易度
+// 型
 type Difficulty = 'easy' | 'medium' | 'hard'
+
+// UI 状態
+const manualCandidateMode = ref(false)
+const selectedNumber = ref(0)
 const currentDifficulty = ref<Difficulty>('easy')
-// 入力エラーメッセージ
 const errorMessage = ref('')
 
-// useSudoku インスタンス取得
-let { board, flatCells, setCellValue, toggleUserCandidate, resetBoard, updateAllCandidates } = useSudoku()
+// ゲーム開始時のパズルを保持
+let gamePuzzle: number[][] = Array.from({ length: 9 }, () => Array(9).fill(0))
+
+// Sudoku API インスタンス
+let { board, flatCells, setCellValue, toggleUserCandidate, resetBoard, updateAllCandidates } = useSudoku(gamePuzzle)
 
 // 難易度設定
 function setDifficulty(diff: Difficulty) {
@@ -97,10 +99,14 @@ function setDifficulty(diff: Difficulty) {
 // ゲーム開始: 動的生成パズルを利用
 function startGame() {
   errorMessage.value = ''
-  const puzzle = makePuzzleByDifficulty(currentDifficulty.value)
-  const api = useSudoku(puzzle)
+  gamePuzzle = makePuzzleByDifficulty(currentDifficulty.value)
+  const api = useSudoku(gamePuzzle)
   board.value = api.board.value
-  ;({ setCellValue, toggleUserCandidate, resetBoard, updateAllCandidates } = api)
+  flatCells.value = api.flatCells.value
+  setCellValue = api.setCellValue
+  toggleUserCandidate = api.toggleUserCandidate
+  resetBoard = api.resetBoard
+  updateAllCandidates = api.updateAllCandidates
   updateAllCandidates()
   selectedNumber.value = 0
 }
@@ -108,18 +114,33 @@ function startGame() {
 // 空盤面生成
 function clearPuzzle() {
   errorMessage.value = ''
-  const api = useSudoku()
+  gamePuzzle = Array.from({ length: 9 }, () => Array(9).fill(0))
+  const api = useSudoku(gamePuzzle)
   board.value = api.board.value
-  ;({ setCellValue, toggleUserCandidate, resetBoard, updateAllCandidates } = api)
+  flatCells.value = api.flatCells.value
+  setCellValue = api.setCellValue
+  toggleUserCandidate = api.toggleUserCandidate
+  resetBoard = api.resetBoard
+  updateAllCandidates = api.updateAllCandidates
   updateAllCandidates()
   selectedNumber.value = 0
 }
 
-// リセット
+// リセット: 開始時のパズル状態に戻す
 function resetAll() {
   errorMessage.value = ''
-  resetBoard()
-  updateAllCandidates()
+  // ★★★ この部分を変更します ★★★
+  // 現在の gamePuzzle (startGame で設定されたもの) を使って新しい useSudoku インスタンスを作成
+  const api = useSudoku(gamePuzzle)
+  board.value = api.board.value
+  flatCells.value = api.flatCells.value // flatCells も更新する
+  setCellValue = api.setCellValue
+  toggleUserCandidate = api.toggleUserCandidate
+  resetBoard = api.resetBoard // resetBoard 関数自体も新しいインスタンスのものに更新
+  updateAllCandidates = api.updateAllCandidates
+  // ★★★ 変更ここまで ★★★
+
+  updateAllCandidates() // 新しい盤面で候補を更新
   selectedNumber.value = 0
 }
 
@@ -137,47 +158,30 @@ function clearSelection() {
   }
 }
 
-// 重複チェック (ログ出力付き)
+// 重複チェック (ログ付き)
 function isConflict(row: number, col: number, val: number): boolean {
-  console.log(`isConflict 呼び出し: row=${row}, col=${col}, val=${val}`)
-  console.log('現在のボード状態:', JSON.parse(JSON.stringify(board.value.map(r => r.map(c => c.value)))))
-
+  console.log(`isConflict: row=${row}, col=${col}, val=${val}`)
+  console.log('board:', JSON.parse(JSON.stringify(board.value)))
   // 行チェック
   for (let c = 0; c < 9; c++) {
-    if (c !== col && board.value[row][c].value === val) {
-      console.log(`★★★ 行重複検知: (${row},${c}) に ${val} があります`)
-      return true
-    }
+    if (c !== col && board.value[row][c] === val) return true
   }
-  console.log('行に重複なし')
-
   // 列チェック
   for (let r = 0; r < 9; r++) {
-    if (r !== row && board.value[r][col].value === val) {
-      console.log(`★★★ 列重複検知: (${r},${col}) に ${val} があります`)
-      return true
-    }
+    if (r !== row && board.value[r][col] === val) return true
   }
-  console.log('列に重複なし')
-
   // ブロックチェック
-  const br = Math.floor(row/3)*3
-  const bc = Math.floor(col/3)*3
-  for (let r_block = br; r_block < br+3; r_block++) {
-    for (let c_block = bc; c_block < bc+3; c_block++) {
-      if (!(r_block === row && c_block === col) && board.value[r_block][c_block].value === val) {
-        console.log(`★★★ ブロック重複検知: (${r_block},${c_block}) に ${val} があります`)
-        return true
-      }
+  const br = Math.floor(row/3)*3, bc = Math.floor(col/3)*3
+  for (let r = br; r < br+3; r++) {
+    for (let c = bc; c < bc+3; c++) {
+      if (!(r===row && c===col) && board.value[r][c] === val) return true
     }
   }
-  console.log(`重複なし: (${row},${col}) に ${val} はOK`)
   return false
 }
 
 // セル確定時
 function onSelectCell({ row, col, val }: Cell) {
-  console.log('onSelectCell:', { row, col, val })
   errorMessage.value = ''
   if (val === 0) {
     setCellValue(row, col, 0)
@@ -201,17 +205,19 @@ function onToggleCandidate({ row, col, candidate }: { row: number; col: number; 
 const allFilled = computed(() => flatCells.value.every(c => c.value !== 0))
 const allCorrect = computed(() => {
   if (!allFilled.value) return false
-  const grid = board.value
-  const isValidGroup = (nums: number[]) => new Set(nums).size === 9 && nums.every(n => n >= 1 && n <= 9)
+  const g = board.value
+  const isValidGroup = (nums: number[]) => new Set(nums).size === 9 && nums.every(n => 1 <= n && n <= 9)
+  // 行・列
   for (let i = 0; i < 9; i++) {
-    if (!isValidGroup(grid[i]) || !isValidGroup(grid.map(r => r[i]))) return false
+    if (!isValidGroup(g[i]) || !isValidGroup(g.map(r => r[i]))) return false
   }
+  // ブロック
   for (let br = 0; br < 3; br++) {
     for (let bc = 0; bc < 3; bc++) {
       const block: number[] = []
       for (let r = br*3; r < br*3+3; r++) {
         for (let c = bc*3; c < bc*3+3; c++) {
-          block.push(grid[r][c])
+          block.push(g[r][c])
         }
       }
       if (!isValidGroup(block)) return false
