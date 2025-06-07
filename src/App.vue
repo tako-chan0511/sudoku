@@ -2,7 +2,6 @@
   <div id="app">
     <h1>数独 (Sudoku)</h1>
 
-    <!-- 手動候補モード切替 -->
     <div class="toggle-buttons">
       <label>
         <input type="checkbox" v-model="manualCandidateMode" />
@@ -10,7 +9,6 @@
       </label>
     </div>
 
-    <!-- 難易度選択ボタン -->
     <div class="difficulty-buttons">
       <button
         :class="{ active: currentDifficulty === 'easy' }"
@@ -26,7 +24,6 @@
       >Hard</button>
     </div>
 
-    <!-- 数字入力パネル -->
     <NumberPicker @pick="onNumberPicked" />
     <div
       class="selected-display"
@@ -37,21 +34,17 @@
       <button @click.stop="clearSelection()" class="clear-btn">×</button>
     </div>
 
-    <!-- 入力エラー表示 -->
     <div v-if="errorMessage" class="validation-msg">{{ errorMessage }}</div>
 
-    <!-- ゲーム開始・リセットボタン -->
     <div class="init-buttons">
       <button @click="startGame" class="start-btn">ゲーム開始</button>
       <button @click="clearPuzzle" style="margin-left:8px;">空盤面</button>
       <button @click="resetAll" style="margin-left:8px;">リセット</button>
     </div>
 
-    <!-- 完成時メッセージ -->
     <div v-if="allCorrect" class="congrats">Congratulations！！！</div>
     <div v-else-if="allFilled" class="error-msg">間違いがあります。確認してください。</div>
 
-    <!-- 9×9 ボードを表示 -->
     <div class="board-wrapper">
       <SudokuCell
         v-for="cell in flatCells"
@@ -77,6 +70,7 @@ import { makePuzzleByDifficulty } from '@/utils/puzzleGenerator'
 
 // 型
 type Difficulty = 'easy' | 'medium' | 'hard'
+type SudokuValue = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9; // 数独のセル値の型
 
 // UI 状態
 const manualCandidateMode = ref(false)
@@ -85,10 +79,12 @@ const currentDifficulty = ref<Difficulty>('easy')
 const errorMessage = ref('')
 
 // ゲーム開始時のパズルを保持
-let gamePuzzle: number[][] = Array.from({ length: 9 }, () => Array(9).fill(0))
+// 型をより厳密に指定
+let gamePuzzle: SudokuValue[][] = Array.from({ length: 9 }, () => Array(9).fill(0) as SudokuValue[])
 
 // Sudoku API インスタンス
-let { board, flatCells, setCellValue, toggleUserCandidate, resetBoard, updateAllCandidates } = useSudoku(gamePuzzle)
+// gamePuzzle の型をアサーションで明示
+let { board, flatCells, setCellValue, toggleUserCandidate, resetBoard, updateAllCandidates } = useSudoku(gamePuzzle as SudokuValue[][])
 
 // 難易度設定
 function setDifficulty(diff: Difficulty) {
@@ -99,10 +95,10 @@ function setDifficulty(diff: Difficulty) {
 // ゲーム開始: 動的生成パズルを利用
 function startGame() {
   errorMessage.value = ''
-  gamePuzzle = makePuzzleByDifficulty(currentDifficulty.value)
+  gamePuzzle = makePuzzleByDifficulty(currentDifficulty.value) as SudokuValue[][] // makePuzzleByDifficultyの戻り値も型アサーション
   const api = useSudoku(gamePuzzle)
   board.value = api.board.value
-  flatCells.value = api.flatCells.value
+  // flatCells.value = api.flatCells.value // read-onlyなので削除
   setCellValue = api.setCellValue
   toggleUserCandidate = api.toggleUserCandidate
   resetBoard = api.resetBoard
@@ -114,10 +110,10 @@ function startGame() {
 // 空盤面生成
 function clearPuzzle() {
   errorMessage.value = ''
-  gamePuzzle = Array.from({ length: 9 }, () => Array(9).fill(0))
+  gamePuzzle = Array.from({ length: 9 }, () => Array(9).fill(0) as SudokuValue[])
   const api = useSudoku(gamePuzzle)
   board.value = api.board.value
-  flatCells.value = api.flatCells.value
+  // flatCells.value = api.flatCells.value // read-onlyなので削除
   setCellValue = api.setCellValue
   toggleUserCandidate = api.toggleUserCandidate
   resetBoard = api.resetBoard
@@ -129,17 +125,14 @@ function clearPuzzle() {
 // リセット: 開始時のパズル状態に戻す
 function resetAll() {
   errorMessage.value = ''
-  // ★★★ この部分を変更します ★★★
   // 現在の gamePuzzle (startGame で設定されたもの) を使って新しい useSudoku インスタンスを作成
-  const api = useSudoku(gamePuzzle)
+  const api = useSudoku(gamePuzzle as SudokuValue[][]) // 型アサーション
   board.value = api.board.value
-  flatCells.value = api.flatCells.value // flatCells も更新する
+  // flatCells.value = api.flatCells.value // read-onlyなので削除
   setCellValue = api.setCellValue
   toggleUserCandidate = api.toggleUserCandidate
   resetBoard = api.resetBoard // resetBoard 関数自体も新しいインスタンスのものに更新
   updateAllCandidates = api.updateAllCandidates
-  // ★★★ 変更ここまで ★★★
-
   updateAllCandidates() // 新しい盤面で候補を更新
   selectedNumber.value = 0
 }
@@ -148,6 +141,7 @@ function resetAll() {
 function onNumberPicked(n: number) {
   errorMessage.value = ''
   selectedNumber.value = n
+  console.log(`[App.vue] NumberPicker picked: ${n}, selectedNumber is now: ${selectedNumber.value}`);
 }
 
 // 選択解除
@@ -160,28 +154,42 @@ function clearSelection() {
 
 // 重複チェック (ログ付き)
 function isConflict(row: number, col: number, val: number): boolean {
-  console.log(`isConflict: row=${row}, col=${col}, val=${val}`)
-  console.log('board:', JSON.parse(JSON.stringify(board.value)))
+  console.log(`[App.vue] isConflict: row=${row}, col=${col}, val=${val}`);
+  console.log('[App.vue] board (isConflict internal):', JSON.parse(JSON.stringify(board.value.map(r => r.map(c => c.value))))); // Cellオブジェクトからvalueのみをログに出力
+
   // 行チェック
   for (let c = 0; c < 9; c++) {
-    if (c !== col && board.value[row][c] === val) return true
+    if (c !== col && board.value[row][c].value === val) { // ★.value を追加
+      console.log(`[App.vue] ★★★ 行重複検知: (${row},${c}) に ${val} があります`);
+      return true
+    }
   }
   // 列チェック
   for (let r = 0; r < 9; r++) {
-    if (r !== row && board.value[r][col] === val) return true
+    if (r !== row && board.value[r][col].value === val) { // ★.value を追加
+      console.log(`[App.vue] ★★★ 列重複検知: (${r},${col}) に ${val} があります`);
+      return true
+    }
   }
   // ブロックチェック
   const br = Math.floor(row/3)*3, bc = Math.floor(col/3)*3
-  for (let r = br; r < br+3; r++) {
-    for (let c = bc; c < bc+3; c++) {
-      if (!(r===row && c===col) && board.value[r][c] === val) return true
+  for (let r_block = br; r_block < br+3; r_block++) {
+    for (let c_block = bc; c_block < bc+3; c_block++) {
+      if (!(r_block === row && c_block === col) && board.value[r_block][c_block].value === val) { // ★.value を追加
+        console.log(`[App.vue] ★★★ ブロック重複検知: (${r_block},${c_block}) に ${val} があります`);
+        return true
+      }
     }
   }
   return false
 }
 
-// セル確定時
-function onSelectCell({ row, col, val }: Cell) {
+// セル確定時処理
+// ★引数の型を SudokuCell がemitするペイロード { row: number; col: number; val: number } に修正
+function onSelectCell(payload: { row: number; col: number; val: number }) {
+  const { row, col, val } = payload; // ペイロードから値を取り出す
+  console.log(`[App.vue] onSelectCell received: row=${row}, col=${col}, val=${val}`); // 追加ログ
+
   errorMessage.value = ''
   if (val === 0) {
     setCellValue(row, col, 0)
@@ -192,13 +200,14 @@ function onSelectCell({ row, col, val }: Cell) {
     errorMessage.value = `重複: (${row+1},${col+1}) に ${val} は置けません`
     return
   }
-  setCellValue(row, col, val)
+  setCellValue(row, col, val as SudokuValue) // setCellValue の引数型に合わせる
   updateAllCandidates()
 }
 
 // 候補トグル
-function onToggleCandidate({ row, col, candidate }: { row: number; col: number; candidate: number }) {
-  toggleUserCandidate(row, col, candidate)
+function onToggleCandidate(payload: { row: number; col: number; candidate: number }) {
+  const { row, col, candidate } = payload;
+  toggleUserCandidate(row, col, candidate as 1|2|3|4|5|6|7|8|9)
 }
 
 // 完成判定
@@ -206,18 +215,21 @@ const allFilled = computed(() => flatCells.value.every(c => c.value !== 0))
 const allCorrect = computed(() => {
   if (!allFilled.value) return false
   const g = board.value
-  const isValidGroup = (nums: number[]) => new Set(nums).size === 9 && nums.every(n => 1 <= n && n <= 9)
+  const isValidGroup = (nums: number[]) => new Set(nums).size === 9 && nums.every(n => n >= 1 && n <= 9)
   // 行・列
   for (let i = 0; i < 9; i++) {
-    if (!isValidGroup(g[i]) || !isValidGroup(g.map(r => r[i]))) return false
+    if (
+      !isValidGroup(g[i].map(cell => cell.value)) || // ★.map(cell => cell.value) を追加
+      !isValidGroup(g.map(r => r[i].value)) // ★.map(r => r[i].value) を追加
+    ) return false
   }
   // ブロック
   for (let br = 0; br < 3; br++) {
     for (let bc = 0; bc < 3; bc++) {
       const block: number[] = []
-      for (let r = br*3; r < br*3+3; r++) {
-        for (let c = bc*3; c < bc*3+3; c++) {
-          block.push(g[r][c])
+      for (let r_block = br*3; r_block < br*3+3; r_block++) {
+        for (let c_block = bc*3; c_block < bc*3+3; c_block++) {
+          block.push(g[r_block][c_block].value) // ★.value を追加
         }
       }
       if (!isValidGroup(block)) return false
