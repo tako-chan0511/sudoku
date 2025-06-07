@@ -5,7 +5,7 @@
       v-for="n in 9"
       :key="n"
       class="small-cell"
-      :class="{ invalid: isInvalid(n), hidden: isHidden(n) }"
+      :class="{ filled: isFilled(n), number: shouldShowNumber(n) }"
       @click.stop="onSmallCellClick(n)"
     >
       <!-- 
@@ -13,7 +13,7 @@
         ・isHidden(n)  === true → 何も表示せず（白いまま）
         ・それ以外 → 数字を小さく表示
       -->
-      <span v-if="!isInvalid(n) && !isHidden(n)">{{ n }}</span>
+      <span v-if="shouldShowNumber(n)">{{ n }}</span>
     </div>
   </div>
 </template>
@@ -40,21 +40,23 @@ const emits = defineEmits<{
   (e: "toggleCandidate", n: number): void;
 }>();
 
-// n を候補表示で「黒塗り」(invalid) とするか
-function isInvalid(n: number): boolean {
-  // autoCandidates/userCandidates が false → 黒塗り
-  if (props.useUserCandidates) {
-    return !props.userCandidates[n as 1];
-  } else {
-    return !props.autoCandidates[n as 1];
-  }
+// n を「黒塗り」（候補あり）にするか
+function isFilled(n: number): boolean {
+  // 手動候補モードのときは userCandidates[n] === true → 黒塗り
+  // 補助（自動）候補モード時は autoCandidates[n] === true → 黒塗り
+  return props.useUserCandidates
+    ? props.userCandidates[n as 1]
+    : props.autoCandidates[n as 1];
 }
 
-// n を候補として「何も表示せず（白抜き）」にするか
-// 今回は明示的に「候補オフ」の場合、白抜きにする。黒塗り or 数字表示以外は白抜き
-function isHidden(n: number): boolean {
-  // すべてのケースで出力するわけではなく、候補 OFF なら白抜き
-  return false;
+// 数字表示するか
+function shouldShowNumber(n: number): boolean {
+  // 黒塗り（候補あり）では数字は表示しない
+  return !isFilled(n) && (
+    props.useUserCandidates
+      ? !props.userCandidates[n as 1]
+      : !props.autoCandidates[n as 1]
+  );
 }
 
 // 小セルをクリックしたとき（手動候補モード + 編集可能セル のときのみイベント上げる）
@@ -74,10 +76,14 @@ function onSmallCellClick(n: number) {
   height: 100%;
 }
 .small-cell {
-  border: 1px solid #ccc;
-  box-sizing: border-box;
   background-color: #fff;
-  position: relative;
+}
+.small-cell.filled {
+  background-color: #000;
+}
+.small-cell.number span {
+  /* 数字を小さく表示 */
+  color: #333;
 }
 .small-cell.invalid {
   background-color: #000;
