@@ -153,7 +153,7 @@ function onToggleCandidate(payload: { row: number; col: number; candidate: numbe
   display: grid;
   grid-template-columns: repeat(9, 48px);
   grid-template-rows:    repeat(9, 48px);
-  border: 2px solid #333;
+  border: 2px solid #007ACC;  /* ← 色を変更 */
   margin: 0 auto;
 }
 </style>

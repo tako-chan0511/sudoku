@@ -117,10 +117,10 @@ function onToggleCandidate(candidate: number) {
   background-color: #e0f7e9;
   cursor: pointer;
 }
-.border-left-thick   { border-left: 3px solid #333 !important; }
-.border-top-thick    { border-top: 3px solid #333 !important; }
-.border-right-thick  { border-right: 3px solid #333 !important; }
-.border-bottom-thick { border-bottom: 3px solid #333 !important; }
+.border-left-thick   { border-left: 4px solid #4401fe !important; }
+.border-top-thick    { border-top: 4px solid #4401fe !important; }
+.border-right-thick  { border-right: 4px solid #4401fe !important; }
+.border-bottom-thick { border-bottom: 4px solid #4401fe !important; }
 .given-cell {
   background-color: #EFEFEF;
   cursor: default;

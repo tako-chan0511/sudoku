@@ -1,4 +1,3 @@
-<!-- src/components/CandidateGrid.vue -->
 <template>
   <div class="candidate-grid">
     <div
@@ -74,9 +73,18 @@ function onSmallCellClick(n: number) {
   grid-template-rows:    repeat(3, 1fr);
   width: 100%;
   height: 100%;
+  /* 候補グリッド全体を点線で表示 */
+  border: 1px dotted #666;
+  box-sizing: border-box;
 }
 .small-cell {
+  /* 各小セルにも点線枠を追加 */
+  border: 1px dotted #666;
+  box-sizing: border-box;
   background-color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .small-cell.filled {
   background-color: #000;
@@ -84,9 +92,6 @@ function onSmallCellClick(n: number) {
 .small-cell.number span {
   /* 数字を小さく表示 */
   color: #333;
-}
-.small-cell.invalid {
-  background-color: #000;
 }
 .small-cell span {
   display: block;
@@ -96,8 +101,5 @@ function onSmallCellClick(n: number) {
   color: #333;
   user-select: none;
   margin-top: 2px;
-}
-.small-cell.hidden {
-  background-color: #fff; /* 何も表示せず */
 }
 </style>
