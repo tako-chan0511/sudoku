@@ -73,73 +73,31 @@ import type { Cell } from '@/types/sudoku'
 import { useSudoku } from '@/composables/useSudoku'
 import SudokuCell from '@/components/SudokuCell.vue'
 import NumberPicker from '@/components/NumberPicker.vue'
-
-// サンプル盤面の定義 (複数パターン対応)
-const puzzlesByDifficulty: Record<'easy'|'medium'|'hard', { puzzle: number[][] }[]> = {
-  easy: [
-    { puzzle: [
-      [0,0,3,0,2,0,6,0,0],
-      [9,0,0,3,0,5,0,0,1],
-      [0,0,1,8,0,6,4,0,0],
-      [0,0,8,1,0,2,9,0,0],
-      [7,0,0,0,0,0,0,0,8],
-      [0,0,6,7,0,8,2,0,0],
-      [0,0,2,6,0,9,5,0,0],
-      [8,0,0,2,0,3,0,0,9],
-      [0,0,5,0,1,0,3,0,0]
-    ] }
-  ],
-  medium: [
-    { puzzle: [
-      [0,2,0,6,0,8,0,0,0],
-      [5,8,0,0,1,9,7,0,0],
-      [0,0,0,0,0,0,0,3,0],
-      [0,0,1,0,0,0,0,6,8],
-      [0,0,8,5,0,2,4,0,0],
-      [7,6,0,0,0,0,1,0,0],
-      [0,3,0,0,0,0,0,0,0],
-      [0,0,7,8,2,0,0,5,4],
-      [0,0,0,9,0,3,0,2,0]
-    ] }
-  ],
-  hard: [
-    { puzzle: [
-      [0,0,0,0,0,0,0,0,0],
-      [0,0,0,0,0,3,0,8,5],
-      [0,0,1,0,2,0,0,0,0],
-      [0,0,0,5,0,7,0,0,0],
-      [0,0,4,0,0,0,1,0,0],
-      [0,9,0,0,0,0,0,0,0],
-      [5,0,0,0,0,0,0,7,3],
-      [0,6,0,0,0,0,0,0,0],
-      [0,0,0,0,4,0,0,0,9]
-    ] }
-  ]
-}
+import { makePuzzleByDifficulty } from '@/utils/puzzleGenerator'
 
 // 手動候補モード
 const manualCandidateMode = ref(false)
 // 選択中の数字 (0=クリア)
 const selectedNumber = ref(0)
 // 現在の難易度
-const currentDifficulty = ref<keyof typeof puzzlesByDifficulty>('easy')
+type Difficulty = 'easy' | 'medium' | 'hard'
+const currentDifficulty = ref<Difficulty>('easy')
 // 入力エラーメッセージ
 const errorMessage = ref('')
 
-// useSudoku インスタンス
+// useSudoku インスタンス取得
 let { board, flatCells, setCellValue, toggleUserCandidate, resetBoard, updateAllCandidates } = useSudoku()
 
 // 難易度設定
-function setDifficulty(diff: keyof typeof puzzlesByDifficulty) {
+function setDifficulty(diff: Difficulty) {
   errorMessage.value = ''
   currentDifficulty.value = diff
 }
 
-// ゲーム開始: 指定難易度でランダム盤面生成
+// ゲーム開始: 動的生成パズルを利用
 function startGame() {
   errorMessage.value = ''
-  const list = puzzlesByDifficulty[currentDifficulty.value]
-  const { puzzle } = list[Math.floor(Math.random() * list.length)]
+  const puzzle = makePuzzleByDifficulty(currentDifficulty.value)
   const api = useSudoku(puzzle)
   board.value = api.board.value
   ;({ setCellValue, toggleUserCandidate, resetBoard, updateAllCandidates } = api)
@@ -179,52 +137,47 @@ function clearSelection() {
   }
 }
 
-// 重複チェック
-// App.vue 内の isConflict 関数
+// 重複チェック (ログ出力付き)
 function isConflict(row: number, col: number, val: number): boolean {
-  // ★ デバッグログは残しておくと便利です ★
-  console.log(`isConflict 呼び出し: row=${row}, col=${col}, val=${val}`);
-  console.log('現在のボード状態 (isConflict内部 - 値のみ):', JSON.parse(JSON.stringify(board.value.map(r => r.map(c => c.value))))); // 値だけ表示するログ
+  console.log(`isConflict 呼び出し: row=${row}, col=${col}, val=${val}`)
+  console.log('現在のボード状態:', JSON.parse(JSON.stringify(board.value.map(r => r.map(c => c.value)))))
 
-  // 同じ行に重複がないか
+  // 行チェック
   for (let c = 0; c < 9; c++) {
-    // 自分自身はチェックしない && セルの値がvalと一致するか
-    if (c !== col && board.value[row][c].value === val) { // .value を追加
-      console.log(`★★★ 行重複検知: (${row},${c}) に ${val} があります`);
-      return true;
+    if (c !== col && board.value[row][c].value === val) {
+      console.log(`★★★ 行重複検知: (${row},${c}) に ${val} があります`)
+      return true
     }
   }
-  console.log('行に重複なし');
+  console.log('行に重複なし')
 
-  // 同じ列に重複がないか
+  // 列チェック
   for (let r = 0; r < 9; r++) {
-    // 自分自身はチェックしない && セルの値がvalと一致するか
-    if (r !== row && board.value[r][col].value === val) { // .value を追加
-      console.log(`★★★ 列重複検知: (${r},${col}) に ${val} があります`);
-      return true;
+    if (r !== row && board.value[r][col].value === val) {
+      console.log(`★★★ 列重複検知: (${r},${col}) に ${val} があります`)
+      return true
     }
   }
-  console.log('列に重複なし');
+  console.log('列に重複なし')
 
-  // 3x3ブロック内に重複がないか
-  const br = Math.floor(row / 3) * 3;
-  const bc = Math.floor(col / 3) * 3;
-  for (let r_block = br; r_block < br + 3; r_block++) { // ループ変数を変更して分かりやすく
-    for (let c_block = bc; c_block < bc + 3; c_block++) { // ループ変数を変更して分かりやすく
-      // 自分自身はチェックしない && セルの値がvalと一致するか
-      if (!((r_block === row) && (c_block === col)) && board.value[r_block][c_block].value === val) { // .value を追加
-        console.log(`★★★ ブロック重複検知: (${r_block},${c_block}) に ${val} があります`);
-        return true;
+  // ブロックチェック
+  const br = Math.floor(row/3)*3
+  const bc = Math.floor(col/3)*3
+  for (let r_block = br; r_block < br+3; r_block++) {
+    for (let c_block = bc; c_block < bc+3; c_block++) {
+      if (!(r_block === row && c_block === col) && board.value[r_block][c_block].value === val) {
+        console.log(`★★★ ブロック重複検知: (${r_block},${c_block}) に ${val} があります`)
+        return true
       }
     }
   }
-  console.log(`重複なし: (${row},${col}) に ${val} はOK`);
-  return false;
+  console.log(`重複なし: (${row},${col}) に ${val} はOK`)
+  return false
 }
 
-// セル確定時処理
+// セル確定時
 function onSelectCell({ row, col, val }: Cell) {
-  console.log('onSelectCell が呼び出されました:', { row, col, val });
+  console.log('onSelectCell:', { row, col, val })
   errorMessage.value = ''
   if (val === 0) {
     setCellValue(row, col, 0)
@@ -256,8 +209,8 @@ const allCorrect = computed(() => {
   for (let br = 0; br < 3; br++) {
     for (let bc = 0; bc < 3; bc++) {
       const block: number[] = []
-      for (let r = br * 3; r < br * 3 + 3; r++) {
-        for (let c = bc * 3; c < bc * 3 + 3; c++) {
+      for (let r = br*3; r < br*3+3; r++) {
+        for (let c = bc*3; c < bc*3+3; c++) {
           block.push(grid[r][c])
         }
       }
