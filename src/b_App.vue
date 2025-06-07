@@ -180,46 +180,20 @@ function clearSelection() {
 }
 
 // 重複チェック
-// App.vue 内の isConflict 関数
 function isConflict(row: number, col: number, val: number): boolean {
-  // ★ デバッグログは残しておくと便利です ★
-  console.log(`isConflict 呼び出し: row=${row}, col=${col}, val=${val}`);
-  console.log('現在のボード状態 (isConflict内部 - 値のみ):', JSON.parse(JSON.stringify(board.value.map(r => r.map(c => c.value))))); // 値だけ表示するログ
+  console.log(`isConflict 呼び出し: row=<span class="math-inline">\{row\}, col\=</span>{col}, val=${val}`);
+  console.log('現在のボード状態 (isConflict内部):', JSON.parse(JSON.stringify(board.value))); // ボードの現状を正確に確認
 
-  // 同じ行に重複がないか
-  for (let c = 0; c < 9; c++) {
-    // 自分自身はチェックしない && セルの値がvalと一致するか
-    if (c !== col && board.value[row][c].value === val) { // .value を追加
-      console.log(`★★★ 行重複検知: (${row},${c}) に ${val} があります`);
-      return true;
+  for (let c = 0; c < 9; c++) if (c !== col && board.value[row][c] === val) return true
+  for (let r = 0; r < 9; r++) if (r !== row && board.value[r][col] === val) return true
+  const br = Math.floor(row / 3) * 3
+  const bc = Math.floor(col / 3) * 3
+  for (let r = br; r < br + 3; r++) {
+    for (let c = bc; c < bc + 3; c++) {
+      if ((r !== row || c !== col) && board.value[r][c] === val) return true
     }
   }
-  console.log('行に重複なし');
-
-  // 同じ列に重複がないか
-  for (let r = 0; r < 9; r++) {
-    // 自分自身はチェックしない && セルの値がvalと一致するか
-    if (r !== row && board.value[r][col].value === val) { // .value を追加
-      console.log(`★★★ 列重複検知: (${r},${col}) に ${val} があります`);
-      return true;
-    }
-  }
-  console.log('列に重複なし');
-
-  // 3x3ブロック内に重複がないか
-  const br = Math.floor(row / 3) * 3;
-  const bc = Math.floor(col / 3) * 3;
-  for (let r_block = br; r_block < br + 3; r_block++) { // ループ変数を変更して分かりやすく
-    for (let c_block = bc; c_block < bc + 3; c_block++) { // ループ変数を変更して分かりやすく
-      // 自分自身はチェックしない && セルの値がvalと一致するか
-      if (!((r_block === row) && (c_block === col)) && board.value[r_block][c_block].value === val) { // .value を追加
-        console.log(`★★★ ブロック重複検知: (${r_block},${c_block}) に ${val} があります`);
-        return true;
-      }
-    }
-  }
-  console.log(`重複なし: (${row},${col}) に ${val} はOK`);
-  return false;
+  return false
 }
 
 // セル確定時処理
