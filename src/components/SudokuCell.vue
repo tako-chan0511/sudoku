@@ -14,7 +14,7 @@
         :autoCandidates="cell.candidates"
         :userCandidates="cell.userCandidates"
         :isEditable="true"
-         :cellInfo="cell" @toggleCandidate="onToggleCandidate" />
+        :cellInfo="cell" @toggleCandidate="onToggleCandidate" />
     </div>
 
     <div v-else class="value-wrapper">
@@ -26,7 +26,7 @@
 import { computed, defineProps, defineEmits } from 'vue';
 import type { Cell } from '@/types/sudoku';
 import CandidateGrid from './CandidateGrid.vue';
-import type { InputMode } from '@/App.vue';
+import type { InputMode } from '@/types/sudoku'; // ★修正：InputMode のインポートパスを '@/types/sudoku' に変更
 
 const props = defineProps<{
   cell: Cell;
@@ -57,22 +57,11 @@ const borderClasses = computed(() => {
 // セル全体のメインクリックハンドラ (セルの選択を行う)
 function handleMainCellClick() {
   if (props.cell.isGiven) return; // 問題の数字は変更不可
-  // if (props.cell.value !== 0) return; // ★この行を削除またはコメントアウト★
-  // 理由：思考モードで候補が入っていても、セル選択は可能にしたい。
-  // 確定値が入っているセルは、クリックしても選択のみに留める（確定値は変更不可）
-  // ただし、既に確定値が入っているセルに候補が表示されることはないので、実質的に影響するのは空セルのみ。
+  // if (props.cell.value !== 0) return; // ★この行を削除★
+  // 理由：確定値が入っているセルでも、クリックしたら選択状態になるようにする
 
   console.log(`[SudokuCell] handleMainCellClick (Cell Select) for cell (${props.cell.row}, ${props.cell.col}).`);
   emits('selectCell', props.cell); // このセルが選択されたことをApp.vueに通知
-
-  // ★重要★
-  // CandidateGrid内のクリックイベント（onSmallCellClick）で @click.stop が使用されています。
-  // そのため、CandidateGrid が表示されているセルをクリックした場合、
-  // handleMainCellClick は**直接は呼び出されません**。
-  // CandidateGrid が表示されているセルを「選択」するためには、
-  // CandidateGrid の onSmallCellClick からも selectCell イベントを発火させる必要があります。
-  // または、@click.stop を削除して、イベント伝播を許可する方法もあります。
-  // 今回は、selectCell イベントを CandidateGrid の onSmallCellClick からも発火するようにします。
 }
 
 // CandidateGrid からの候補トグルイベントを受け取る（そのままApp.vueへ中継）
@@ -87,7 +76,6 @@ function onToggleCandidate(candidate: number) {
 </script>
 
 <style scoped>
-/* スタイルは変更なし */
 .sudoku-cell {
   width: 48px;
   height: 48px;

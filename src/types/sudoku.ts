@@ -31,3 +31,6 @@ export interface Cell {
 
 /** Board は 9×9 の Cell[][] */
 export type Board = Cell[][]
+
+// ★追加：InputMode 型をここで定義
+export type InputMode = 'confirm' | 'thinking';
