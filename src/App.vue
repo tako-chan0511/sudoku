@@ -1,44 +1,55 @@
 <template>
   <div id="app">
     <h1>数独 (Sudoku)</h1>
-
-    <div class="input-mode-buttons">
-      <button
-        :class="{ active: inputMode === 'confirm' }"
-        @click="setInputMode('confirm')"
-      >確定モード</button>
-      <button
-        :class="{ active: inputMode === 'thinking' }"
-        @click="setInputMode('thinking')"
-      >思考モード</button>
-    </div>
-
+ 
     <div class="difficulty-buttons">
       <button
         :class="{ active: currentDifficulty === 'easy' }"
         @click="setDifficulty('easy')"
-      >Easy</button>
+      >
+        Easy
+      </button>
       <button
         :class="{ active: currentDifficulty === 'medium' }"
         @click="setDifficulty('medium')"
-      >Medium</button>
+      >
+        Medium
+      </button>
       <button
         :class="{ active: currentDifficulty === 'hard' }"
         @click="setDifficulty('hard')"
-      >Hard</button>
+      >
+        Hard
+      </button>
     </div>
-
+       <div class="init-buttons">
+      <button @click="startGame" class="start-btn">ゲーム開始</button>
+      <button @click="clearPuzzle" style="margin-left: 8px">空盤面</button>
+      <button @click="resetAll" style="margin-left: 8px">リセット</button>
+    </div>
+    <div class="input-mode-buttons">
+      <button
+        :class="{ active: inputMode === 'confirm' }"
+        @click="setInputMode('confirm')"
+      >
+        確定モード
+      </button>
+      <button
+        :class="{ active: inputMode === 'thinking' }"
+        @click="setInputMode('thinking')"
+      >
+        思考モード
+      </button>
+    </div>
     <NumberPicker @pick="onNumberPicked" />
     <div v-if="errorMessage" class="validation-msg">{{ errorMessage }}</div>
 
-    <div class="init-buttons">
-      <button @click="startGame" class="start-btn">ゲーム開始</button>
-      <button @click="clearPuzzle" style="margin-left:8px;">空盤面</button>
-      <button @click="resetAll" style="margin-left:8px;">リセット</button>
-    </div>
+
 
     <div v-if="allCorrect" class="congrats">Congratulations！！！</div>
-    <div v-else-if="allFilled" class="error-msg">間違いがあります。確認してください。</div>
+    <div v-else-if="allFilled" class="error-msg">
+      間違いがあります。確認してください。
+    </div>
 
     <div class="board-wrapper">
       <SudokuCell
@@ -47,7 +58,11 @@
         :cell="cell"
         :inputMode="inputMode"
         :selectedNumber="selectedNumber"
-        :isSelected="selectedCell ? (selectedCell.row === cell.row && selectedCell.col === cell.col) : false"
+        :isSelected="
+          selectedCell
+            ? selectedCell.row === cell.row && selectedCell.col === cell.col
+            : false
+        "
         @selectCell="onSelectCellFromBoard"
         @inputCell="onInputCell"
         @toggleCandidate="onToggleCandidate"
@@ -57,106 +72,128 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed } from 'vue'
-import type { Cell } from '@/types/sudoku'
-import { useSudoku } from '@/composables/useSudoku'
-import SudokuCell from '@/components/SudokuCell.vue'
-import NumberPicker from '@/components/NumberPicker.vue'
-import { makePuzzleByDifficulty } from '@/utils/puzzleGenerator'
-import { nextTick } from 'vue';
+import { ref, computed } from "vue";
+import type { Cell } from "@/types/sudoku";
+import { useSudoku } from "@/composables/useSudoku";
+import SudokuCell from "@/components/SudokuCell.vue";
+import NumberPicker from "@/components/NumberPicker.vue";
+import { makePuzzleByDifficulty } from "@/utils/puzzleGenerator";
+import { nextTick } from "vue";
 
 // 型
-type Difficulty = 'easy' | 'medium' | 'hard'
+type Difficulty = "easy" | "medium" | "hard";
 type SudokuValue = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
-type InputMode = 'confirm' | 'thinking';
+type InputMode = "confirm" | "thinking";
 
 // UI 状態
-const inputMode = ref<InputMode>('confirm');
-const selectedNumber = ref(0)
-const currentDifficulty = ref<Difficulty>('easy')
-const errorMessage = ref('')
+const inputMode = ref<InputMode>("confirm");
+const selectedNumber = ref(0);
+const currentDifficulty = ref<Difficulty>("easy");
+const errorMessage = ref("");
 const selectedCell = ref<Cell | null>(null);
 
 // ゲーム開始時のパズルを保持
-let gamePuzzle: SudokuValue[][] = Array.from({ length: 9 }, () => Array(9).fill(0) as SudokuValue[])
+let gamePuzzle: SudokuValue[][] = Array.from(
+  { length: 9 },
+  () => Array(9).fill(0) as SudokuValue[]
+);
 
 // Sudoku API インスタンス
-let { board, flatCells, setCellValue, toggleUserCandidate, resetBoard, updateAllCandidates } = useSudoku(gamePuzzle as SudokuValue[][])
+let {
+  board,
+  flatCells,
+  setCellValue,
+  toggleUserCandidate,
+  resetBoard,
+  updateAllCandidates,
+} = useSudoku(gamePuzzle as SudokuValue[][]);
 
 // モード設定
 function setInputMode(mode: InputMode) {
   console.log(`[App.vue] Setting input mode to: ${mode}`);
   inputMode.value = mode;
-  errorMessage.value = '';
+  errorMessage.value = "";
 }
 
 // 難易度設定
 function setDifficulty(diff: Difficulty) {
   console.log(`[App.vue] Setting difficulty to: ${diff}`);
-  errorMessage.value = ''
-  currentDifficulty.value = diff
+  errorMessage.value = "";
+  currentDifficulty.value = diff;
 }
 
 // ゲーム開始: 動的生成パズルを利用
 function startGame() {
-  console.log('[App.vue] Starting new game...');
-  errorMessage.value = ''
-  gamePuzzle = makePuzzleByDifficulty(currentDifficulty.value) as SudokuValue[][]
-  const api = useSudoku(gamePuzzle)
-  board.value = api.board.value
-  setCellValue = api.setCellValue
-  toggleUserCandidate = api.toggleUserCandidate
-  resetBoard = api.resetBoard
-  updateAllCandidates = api.updateAllCandidates
-  updateAllCandidates()
-  selectedNumber.value = 0
+  console.log("[App.vue] Starting new game...");
+  errorMessage.value = "";
+  gamePuzzle = makePuzzleByDifficulty(
+    currentDifficulty.value
+  ) as SudokuValue[][];
+  const api = useSudoku(gamePuzzle);
+  board.value = api.board.value;
+  setCellValue = api.setCellValue;
+  toggleUserCandidate = api.toggleUserCandidate;
+  resetBoard = api.resetBoard;
+  updateAllCandidates = api.updateAllCandidates;
+  updateAllCandidates();
+  selectedNumber.value = 0;
   selectedCell.value = null;
 }
 
 // 空盤面生成
 function clearPuzzle() {
-  console.log('[App.vue] Clearing puzzle...');
-  errorMessage.value = ''
-  gamePuzzle = Array.from({ length: 9 }, () => Array(9).fill(0) as SudokuValue[])
-  const api = useSudoku(gamePuzzle)
-  board.value = api.board.value
-  setCellValue = api.setCellValue
-  toggleUserCandidate = api.toggleUserCandidate
-  resetBoard = api.resetBoard
-  updateAllCandidates = api.updateAllCandidates
-  updateAllCandidates()
-  selectedNumber.value = 0
+  console.log("[App.vue] Clearing puzzle...");
+  errorMessage.value = "";
+  gamePuzzle = Array.from(
+    { length: 9 },
+    () => Array(9).fill(0) as SudokuValue[]
+  );
+  const api = useSudoku(gamePuzzle);
+  board.value = api.board.value;
+  setCellValue = api.setCellValue;
+  toggleUserCandidate = api.toggleUserCandidate;
+  resetBoard = api.resetBoard;
+  updateAllCandidates = api.updateAllCandidates;
+  updateAllCandidates();
+  selectedNumber.value = 0;
   selectedCell.value = null;
 }
 
 // リセット: 開始時のパズル状態に戻す
 function resetAll() {
-  console.log('[App.vue] Resetting all...');
-  errorMessage.value = ''
-  const api = useSudoku(gamePuzzle as SudokuValue[][])
-  board.value = api.board.value
-  setCellValue = api.setCellValue
-  toggleUserCandidate = api.toggleUserCandidate
-  resetBoard = api.resetBoard
-  updateAllCandidates = api.updateAllCandidates
-  updateAllCandidates()
-  selectedNumber.value = 0
+  console.log("[App.vue] Resetting all...");
+  errorMessage.value = "";
+  const api = useSudoku(gamePuzzle as SudokuValue[][]);
+  board.value = api.board.value;
+  setCellValue = api.setCellValue;
+  toggleUserCandidate = api.toggleUserCandidate;
+  resetBoard = api.resetBoard;
+  updateAllCandidates = api.updateAllCandidates;
+  updateAllCandidates();
+  selectedNumber.value = 0;
   selectedCell.value = null;
 }
 
 // 数字選択 (NumberPickerから)
 function onNumberPicked(n: number) {
-  errorMessage.value = ''
-  selectedNumber.value = n
-  console.log(`[App.vue] NumberPicker picked: ${n}, selectedNumber is now: ${selectedNumber.value}. Current mode: ${inputMode.value}`);
+  errorMessage.value = "";
+  selectedNumber.value = n;
+  console.log(
+    `[App.vue] NumberPicker picked: ${n}, selectedNumber is now: ${selectedNumber.value}. Current mode: ${inputMode.value}`
+  );
 
   // 数字が選ばれたら、選択中のセルに対して操作を実行
-  if (selectedCell.value) { // 選択セルがある場合のみ処理
-    console.log(`[App.vue] onNumberPicked: Cell (${selectedCell.value.row}, ${selectedCell.value.col}) selected. Its value: ${selectedCell.value.value}, isGiven: ${selectedCell.value.isGiven}`); // ★ログ追加
-    
+  if (selectedCell.value) {
+    // 選択セルがある場合のみ処理
+    console.log(
+      `[App.vue] onNumberPicked: Cell (${selectedCell.value.row}, ${selectedCell.value.col}) selected. Its value: ${selectedCell.value.value}, isGiven: ${selectedCell.value.isGiven}`
+    ); // ★ログ追加
+
     // isGivenセルは変更不可
     if (selectedCell.value.isGiven) {
-      console.log(`[App.vue] onNumberPicked: Cell (${selectedCell.value.row},${selectedCell.value.col}) is given, cannot modify.`);
+      console.log(
+        `[App.vue] onNumberPicked: Cell (${selectedCell.value.row},${selectedCell.value.col}) is given, cannot modify.`
+      );
       errorMessage.value = `問題の数字は変更できません`;
       return;
     }
@@ -170,7 +207,8 @@ function onNumberPicked(n: number) {
       col: selectedCell.value.col,
       val: selectedNumber.value,
     });
-  } else { // セルが選択されていない場合
+  } else {
+    // セルが選択されていない場合
     console.log(`[App.vue] onNumberPicked: No cell selected.`);
     errorMessage.value = `先にセルを選択してください。`;
   }
@@ -178,23 +216,33 @@ function onNumberPicked(n: number) {
 
 // 選択解除 (selectedNumberを0に)
 function clearSelection() {
-  console.log('[App.vue] clearSelection called.');
-  errorMessage.value = '';
+  console.log("[App.vue] clearSelection called.");
+  errorMessage.value = "";
   selectedNumber.value = 0;
   selectedCell.value = null; // セル選択も解除
 }
 
 // SudokuCellからのセル選択イベント
 function onSelectCellFromBoard(cell: Cell) {
-  console.log(`[App.vue] onSelectCellFromBoard: Cell (${cell.row}, ${cell.col}) clicked.`);
-  errorMessage.value = '';
-  if (selectedCell.value && selectedCell.value.row === cell.row && selectedCell.value.col === cell.col) {
+  console.log(
+    `[App.vue] onSelectCellFromBoard: Cell (${cell.row}, ${cell.col}) clicked.`
+  );
+  errorMessage.value = "";
+  if (
+    selectedCell.value &&
+    selectedCell.value.row === cell.row &&
+    selectedCell.value.col === cell.col
+  ) {
     // 同じセルを再度クリックしたら選択解除
     selectedCell.value = null;
-    console.log(`[App.vue] onSelectCellFromBoard: Cell (${cell.row}, ${cell.col}) deselected.`);
+    console.log(
+      `[App.vue] onSelectCellFromBoard: Cell (${cell.row}, ${cell.col}) deselected.`
+    );
   } else {
     selectedCell.value = cell;
-    console.log(`[App.vue] onSelectCellFromBoard: Cell (${cell.row}, ${cell.col}) selected.`);
+    console.log(
+      `[App.vue] onSelectCellFromBoard: Cell (${cell.row}, ${cell.col}) selected.`
+    );
   }
   nextTick(() => {
     console.log(`[App.vue] onSelectCellFromBoard: nextTick executed.`);
@@ -204,39 +252,54 @@ function onSelectCellFromBoard(cell: Cell) {
 // 重複チェック (ログ付き)
 function isConflict(row: number, col: number, val: number): boolean {
   console.log(`[App.vue] isConflict: row=${row}, col=${col}, val=${val}`);
-  console.log('[App.vue] board (isConflict internal):', JSON.parse(JSON.stringify(board.value.map(r => r.map(c => c.value)))));
+  console.log(
+    "[App.vue] board (isConflict internal):",
+    JSON.parse(JSON.stringify(board.value.map((r) => r.map((c) => c.value))))
+  );
 
   // 行チェック
   for (let c = 0; c < 9; c++) {
     if (c !== col && board.value[row][c].value === val) {
-      console.log(`[App.vue] ★★★ 行重複検知: (${row},${c}) に ${val} があります`);
-      return true
+      console.log(
+        `[App.vue] ★★★ 行重複検知: (${row},${c}) に ${val} があります`
+      );
+      return true;
     }
   }
   // 列チェック
   for (let r = 0; r < 9; r++) {
     if (r !== row && board.value[r][col].value === val) {
-      console.log(`[App.vue] ★★★ 列重複検知: (${r},${col}) に ${val} があります`);
-      return true
+      console.log(
+        `[App.vue] ★★★ 列重複検知: (${r},${col}) に ${val} があります`
+      );
+      return true;
     }
   }
   // ブロックチェック
-  const br = Math.floor(row/3)*3, bc = Math.floor(col/3)*3
-  for (let r_block = br; r_block < br+3; r_block++) {
-    for (let c_block = bc; c_block < bc+3; c_block++) {
-      if (!(r_block === row && c_block === col) && board.value[r_block][c_block].value === val) {
-        console.log(`[App.vue] ★★★ ブロック重複検知: (${r_block},${c_block}) に ${val} があります`);
-        return true
+  const br = Math.floor(row / 3) * 3,
+    bc = Math.floor(col / 3) * 3;
+  for (let r_block = br; r_block < br + 3; r_block++) {
+    for (let c_block = bc; c_block < bc + 3; c_block++) {
+      if (
+        !(r_block === row && c_block === col) &&
+        board.value[r_block][c_block].value === val
+      ) {
+        console.log(
+          `[App.vue] ★★★ ブロック重複検知: (${r_block},${c_block}) に ${val} があります`
+        );
+        return true;
       }
     }
   }
-  return false
+  return false;
 }
 
 // セルへの入力統合ハンドラ
 function onInputCell(payload: { row: number; col: number; val: number }) {
   const { row, col, val } = payload;
-  console.log(`[App.vue] onInputCell received: row=${row}, col=${col}, val=${val}, inputMode=${inputMode.value}`);
+  console.log(
+    `[App.vue] onInputCell received: row=${row}, col=${col}, val=${val}, inputMode=${inputMode.value}`
+  );
 
   if (!selectedCell.value) {
     console.warn(`[App.vue] onInputCell: No cell selected.`);
@@ -249,76 +312,100 @@ function onInputCell(payload: { row: number; col: number; val: number }) {
     errorMessage.value = `問題の数字は変更できません`;
     return;
   }
-  
-  errorMessage.value = ''; // 入力試行時にエラーメッセージをクリア
 
-  if (val === 0) { // クリアの指示はモード共通
+  errorMessage.value = ""; // 入力試行時にエラーメッセージをクリア
+
+  if (val === 0) {
+    // クリアの指示はモード共通
     console.log(`[App.vue] onInputCell: Clear operation for (${row},${col}).`);
-    setCellValue(row, col, 0); 
+    setCellValue(row, col, 0);
     updateAllCandidates();
     return;
   }
 
-  if (inputMode.value === 'confirm') {
+  if (inputMode.value === "confirm") {
     // 確定モードの場合
-    console.log(`[App.vue] onInputCell: Confirm mode, setting value ${val} to (${row},${col}).`);
+    console.log(
+      `[App.vue] onInputCell: Confirm mode, setting value ${val} to (${row},${col}).`
+    );
     if (isConflict(row, col, val)) {
-      errorMessage.value = `重複: (${row+1},${col+1}) に ${val} は置けません`;
+      errorMessage.value = `重複: (${row + 1},${
+        col + 1
+      }) に ${val} は置けません`;
       return;
     }
     setCellValue(row, col, val as SudokuValue);
     updateAllCandidates();
-  } else { // 'thinking' モードの場合
+  } else {
+    // 'thinking' モードの場合
     // 思考モードの場合、候補のトグルを行う
-    console.log(`[App.vue] onInputCell: Thinking mode, toggling candidate ${val} for (${row},${col}).`);
-    toggleUserCandidate(row, col, val as 1|2|3|4|5|6|7|8|9);
+    console.log(
+      `[App.vue] onInputCell: Thinking mode, toggling candidate ${val} for (${row},${col}).`
+    );
+    toggleUserCandidate(row, col, val as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9);
   }
 }
 
 // 候補トグル (SudokuCellのCandidateGridからの直接イベント)
-function onToggleCandidate(payload: { row: number; col: number; candidate: number }) {
+function onToggleCandidate(payload: {
+  row: number;
+  col: number;
+  candidate: number;
+}) {
   const { row, col, candidate } = payload;
-  console.log(`[App.vue] onToggleCandidate received: row=${row}, col=${col}, candidate=${candidate}.`);
+  console.log(
+    `[App.vue] onToggleCandidate received: row=${row}, col=${col}, candidate=${candidate}.`
+  );
 
   if (!selectedCell.value || selectedCell.value.isGiven) {
-    console.warn(`[App.vue] onToggleCandidate: No cell selected or cell is given.`);
+    console.warn(
+      `[App.vue] onToggleCandidate: No cell selected or cell is given.`
+    );
     return;
   }
-  
-  toggleUserCandidate(row, col, candidate as 1|2|3|4|5|6|7|8|9);
+
+  toggleUserCandidate(row, col, candidate as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9);
 }
 
 // 完成判定
-const allFilled = computed(() => flatCells.value.every(c => c.value !== 0))
+const allFilled = computed(() => flatCells.value.every((c) => c.value !== 0));
 const allCorrect = computed(() => {
-  if (!allFilled.value) return false
-  const g = board.value
-  const isValidGroup = (nums: number[]) => new Set(nums).size === 9 && nums.every(n => n >= 1 && n <= 9)
+  if (!allFilled.value) return false;
+  const g = board.value;
+  const isValidGroup = (nums: number[]) =>
+    new Set(nums).size === 9 && nums.every((n) => n >= 1 && n <= 9);
   // 行・列
   for (let i = 0; i < 9; i++) {
     if (
-      !isValidGroup(g[i].map(cell => cell.value)) ||
-      !isValidGroup(g.map(r => r[i].value))
-    ) return false
+      !isValidGroup(g[i].map((cell) => cell.value)) ||
+      !isValidGroup(g.map((r) => r[i].value))
+    )
+      return false;
   }
   // ブロック
   for (let br = 0; br < 3; br++) {
     for (let bc = 0; bc < 3; bc++) {
-      const block: number[] = []
-      for (let r_block = br*3; r_block < br*3+3; r_block++) {
-        for (let c_block = bc*3; c_block < bc*3+3; c_block++) {
-          block.push(g[r_block][c_block].value)
+      const block: number[] = [];
+      for (let r_block = br * 3; r_block < br * 3 + 3; r_block++) {
+        for (let c_block = bc * 3; c_block < bc * 3 + 3; c_block++) {
+          block.push(g[r_block][c_block].value);
         }
       }
-      if (!isValidGroup(block)) return false
+      if (!isValidGroup(block)) return false;
     }
   }
-  return true
-})
+  return true;
+});
 </script>
 
 <style>
-#app { max-width: 600px; margin: 0 auto; padding: 16px; text-align: center; font-family: Arial, sans-serif; }
+#app {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 16px;
+  text-align: center;
+  font-family: Arial, sans-serif;
+}
 
 .input-mode-buttons {
   margin-bottom: 12px;
@@ -332,19 +419,55 @@ const allCorrect = computed(() => {
   cursor: pointer;
 }
 .input-mode-buttons button.active {
-  background-color: #007ACC;
+  background-color: #007acc;
   color: #fff;
-  border-color: #007ACC;
+  border-color: #007acc;
 }
 
-.difficulty-buttons, .init-buttons { margin-bottom: 12px; }
-.difficulty-buttons button { margin-right: 8px; padding: 6px 12px; }
-.difficulty-buttons button.active { background-color: #007ACC; color: #fff; }
-.validation-msg { color: red; margin: 8px 0; }
+.difficulty-buttons,
+.init-buttons {
+  margin-bottom: 12px;
+}
+.difficulty-buttons button {
+  margin-right: 8px;
+  padding: 6px 12px;
+}
+.difficulty-buttons button.active {
+  background-color: #007acc;
+  color: #fff;
+}
+.validation-msg {
+  color: red;
+  margin: 8px 0;
+}
 
-.board-wrapper { display: grid; grid-template-columns: repeat(9, 48px); grid-template-rows: repeat(9, 48px); border: 2px solid #007ACC; margin: 0 auto; }
-.congrats { margin: 12px 0; font-size: 1.2rem; color: green; font-weight: bold; }
-.error-msg { margin: 12px 0; font-size: 1rem; color: red; }
-.start-btn { background-color: #007ACC; color: white; padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; }
-.start-btn:hover { background-color: #005A9C; }
+.board-wrapper {
+  display: grid;
+  grid-template-columns: repeat(9, 48px);
+  grid-template-rows: repeat(9, 48px);
+  border: 2px solid #007acc;
+  margin: 0 auto;
+}
+.congrats {
+  margin: 12px 0;
+  font-size: 1.2rem;
+  color: green;
+  font-weight: bold;
+}
+.error-msg {
+  margin: 12px 0;
+  font-size: 1rem;
+  color: red;
+}
+.start-btn {
+  background-color: #007acc;
+  color: white;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.start-btn:hover {
+  background-color: #005a9c;
+}
 </style>
