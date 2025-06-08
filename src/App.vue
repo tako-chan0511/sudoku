@@ -1,7 +1,7 @@
 <template>
-  <div id="app">
+  <div id="app" @keydown="handleKeyDown" tabindex="0">
     <h1>数独 (Sudoku)</h1>
- 
+
     <div class="difficulty-buttons">
       <button
         :class="{ active: currentDifficulty === 'easy' }"
@@ -22,29 +22,21 @@
         Hard
       </button>
     </div>
-       <div class="init-buttons">
+    <div class="init-buttons">
       <button @click="startGame" class="start-btn">ゲーム開始</button>
       <button @click="clearPuzzle" style="margin-left: 8px">空盤面</button>
       <button @click="resetAll" style="margin-left: 8px">リセット</button>
     </div>
     <div class="input-mode-buttons">
       <button
-        :class="{ active: inputMode === 'confirm' }"
-        @click="setInputMode('confirm')"
-      >
-        確定モード
-      </button>
-      <button
         :class="{ active: inputMode === 'thinking' }"
-        @click="setInputMode('thinking')"
+        @click="toggleInputMode"
       >
-        思考モード
+        候補入力モード
       </button>
     </div>
     <NumberPicker @pick="onNumberPicked" />
     <div v-if="errorMessage" class="validation-msg">{{ errorMessage }}</div>
-
-
 
     <div v-if="allCorrect" class="congrats">Congratulations！！！</div>
     <div v-else-if="allFilled" class="error-msg">
@@ -78,7 +70,7 @@ import { useSudoku } from "@/composables/useSudoku";
 import SudokuCell from "@/components/SudokuCell.vue";
 import NumberPicker from "@/components/NumberPicker.vue";
 import { makePuzzleByDifficulty } from "@/utils/puzzleGenerator";
-import { nextTick } from "vue";
+import { nextTick, onMounted } from "vue";
 
 // 型
 type Difficulty = "easy" | "medium" | "hard";
@@ -86,7 +78,7 @@ type SudokuValue = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 type InputMode = "confirm" | "thinking";
 
 // UI 状態
-const inputMode = ref<InputMode>("confirm");
+const inputMode = ref<InputMode>("confirm"); // ★変更点2: 初期値を 'confirm' に設定 (候補入力OFF)
 const selectedNumber = ref(0);
 const currentDifficulty = ref<Difficulty>("easy");
 const errorMessage = ref("");
@@ -108,7 +100,83 @@ let {
   updateAllCandidates,
 } = useSudoku(gamePuzzle as SudokuValue[][]);
 
-// モード設定
+onMounted(() => {
+  const appElement = document.getElementById('app');
+  if (appElement) {
+    appElement.focus();
+  }
+
+  nextTick(() => {
+    if (flatCells.value.length > 0) {
+      selectedCell.value = flatCells.value[0];
+      console.log(`[App.vue] onMounted: Initial cell selected: (${selectedCell.value.row}, ${selectedCell.value.col})`);
+    }
+  });
+});
+
+// ★変更点3: キーボードイベントハンドラ
+function handleKeyDown(event: KeyboardEvent) {
+  if (!selectedCell.value) {
+    return; // セルが選択されていない場合は何もしない
+  }
+
+  let newRow = selectedCell.value.row;
+  let newCol = selectedCell.value.col;
+  let moved = false;
+
+  switch (event.key) {
+    case 'ArrowUp':
+      newRow = Math.max(0, newRow - 1);
+      moved = true;
+      break;
+    case 'ArrowDown':
+      newRow = Math.min(8, newRow + 1);
+      moved = true;
+      break;
+    case 'ArrowLeft':
+      newCol = Math.max(0, newCol - 1);
+      moved = true;
+      break;
+    case 'ArrowRight':
+      newCol = Math.min(8, newCol + 1);
+      moved = true;
+      break;
+    case 'Backspace':
+    case 'Delete':
+      if (!selectedCell.value.isGiven && selectedCell.value.value !== 0) {
+        onInputCell({ row: newRow, col: newCol, val: 0 });
+        event.preventDefault();
+      } else if (!selectedCell.value.isGiven && selectedCell.value.userCandidates.size > 0 && inputMode.value === 'thinking') {
+         selectedCell.value.userCandidates.forEach(cand => {
+            toggleUserCandidate(newRow, newCol, cand as 1|2|3|4|5|6|7|8|9);
+         });
+         event.preventDefault();
+      }
+      return;
+    case '1': case '2': case '3': case '4': case '5':
+    case '6': case '7': case '8': case '9':
+      onNumberPicked(parseInt(event.key));
+      event.preventDefault();
+      return;
+  }
+
+  if (moved) {
+    selectedCell.value = board.value[newRow][newCol];
+    event.preventDefault();
+    console.log(`[App.vue] handleKeyDown: Moved to (${newRow}, ${newCol})`);
+  }
+}
+
+// ★変更点4: inputModeをトグルする関数を追加
+function toggleInputMode() {
+  inputMode.value = inputMode.value === 'confirm' ? 'thinking' : 'confirm';
+  errorMessage.value = "";
+  console.log(`[App.vue] Input mode toggled to: ${inputMode.value}`);
+}
+
+// 既存の setInputMode はもうボタンからは呼ばれていませんが、
+// 他の場所で使われていないことを確認できたら削除してOKです。
+// 現時点では、念のため残しておきます。
 function setInputMode(mode: InputMode) {
   console.log(`[App.vue] Setting input mode to: ${mode}`);
   inputMode.value = mode;
@@ -137,7 +205,13 @@ function startGame() {
   updateAllCandidates = api.updateAllCandidates;
   updateAllCandidates();
   selectedNumber.value = 0;
-  selectedCell.value = null;
+  nextTick(() => {
+    selectedCell.value = flatCells.value[0];
+    const appElement = document.getElementById('app');
+    if (appElement) {
+      appElement.focus();
+    }
+  });
 }
 
 // 空盤面生成
@@ -156,7 +230,13 @@ function clearPuzzle() {
   updateAllCandidates = api.updateAllCandidates;
   updateAllCandidates();
   selectedNumber.value = 0;
-  selectedCell.value = null;
+  nextTick(() => {
+    selectedCell.value = flatCells.value[0];
+    const appElement = document.getElementById('app');
+    if (appElement) {
+      appElement.focus();
+    }
+  });
 }
 
 // リセット: 開始時のパズル状態に戻す
@@ -171,7 +251,13 @@ function resetAll() {
   updateAllCandidates = api.updateAllCandidates;
   updateAllCandidates();
   selectedNumber.value = 0;
-  selectedCell.value = null;
+  nextTick(() => {
+    selectedCell.value = flatCells.value[0];
+    const appElement = document.getElementById('app');
+    if (appElement) {
+      appElement.focus();
+    }
+  });
 }
 
 // 数字選択 (NumberPickerから)
@@ -182,14 +268,11 @@ function onNumberPicked(n: number) {
     `[App.vue] NumberPicker picked: ${n}, selectedNumber is now: ${selectedNumber.value}. Current mode: ${inputMode.value}`
   );
 
-  // 数字が選ばれたら、選択中のセルに対して操作を実行
   if (selectedCell.value) {
-    // 選択セルがある場合のみ処理
     console.log(
       `[App.vue] onNumberPicked: Cell (${selectedCell.value.row}, ${selectedCell.value.col}) selected. Its value: ${selectedCell.value.value}, isGiven: ${selectedCell.value.isGiven}`
-    ); // ★ログ追加
+    );
 
-    // isGivenセルは変更不可
     if (selectedCell.value.isGiven) {
       console.log(
         `[App.vue] onNumberPicked: Cell (${selectedCell.value.row},${selectedCell.value.col}) is given, cannot modify.`
@@ -198,17 +281,12 @@ function onNumberPicked(n: number) {
       return;
     }
 
-    // ★ここが修正箇所：確定モードでの「入れ替え」や「削除」を許可するロジック
-    // セルに値が既に入っているかどうかに関わらず、onInputCell を呼び出す。
-    // onInputCell 内で val === 0 の処理と isConflict チェックが行われるため、
-    // ここではシンプルに onInputCell を呼び出す。
     onInputCell({
       row: selectedCell.value.row,
       col: selectedCell.value.col,
       val: selectedNumber.value,
     });
   } else {
-    // セルが選択されていない場合
     console.log(`[App.vue] onNumberPicked: No cell selected.`);
     errorMessage.value = `先にセルを選択してください。`;
   }
@@ -219,7 +297,7 @@ function clearSelection() {
   console.log("[App.vue] clearSelection called.");
   errorMessage.value = "";
   selectedNumber.value = 0;
-  selectedCell.value = null; // セル選択も解除
+  selectedCell.value = null;
 }
 
 // SudokuCellからのセル選択イベント
@@ -233,7 +311,6 @@ function onSelectCellFromBoard(cell: Cell) {
     selectedCell.value.row === cell.row &&
     selectedCell.value.col === cell.col
   ) {
-    // 同じセルを再度クリックしたら選択解除
     selectedCell.value = null;
     console.log(
       `[App.vue] onSelectCellFromBoard: Cell (${cell.row}, ${cell.col}) deselected.`
@@ -257,7 +334,6 @@ function isConflict(row: number, col: number, val: number): boolean {
     JSON.parse(JSON.stringify(board.value.map((r) => r.map((c) => c.value))))
   );
 
-  // 行チェック
   for (let c = 0; c < 9; c++) {
     if (c !== col && board.value[row][c].value === val) {
       console.log(
@@ -266,7 +342,6 @@ function isConflict(row: number, col: number, val: number): boolean {
       return true;
     }
   }
-  // 列チェック
   for (let r = 0; r < 9; r++) {
     if (r !== row && board.value[r][col].value === val) {
       console.log(
@@ -275,7 +350,6 @@ function isConflict(row: number, col: number, val: number): boolean {
       return true;
     }
   }
-  // ブロックチェック
   const br = Math.floor(row / 3) * 3,
     bc = Math.floor(col / 3) * 3;
   for (let r_block = br; r_block < br + 3; r_block++) {
@@ -313,10 +387,9 @@ function onInputCell(payload: { row: number; col: number; val: number }) {
     return;
   }
 
-  errorMessage.value = ""; // 入力試行時にエラーメッセージをクリア
+  errorMessage.value = "";
 
   if (val === 0) {
-    // クリアの指示はモード共通
     console.log(`[App.vue] onInputCell: Clear operation for (${row},${col}).`);
     setCellValue(row, col, 0);
     updateAllCandidates();
@@ -324,7 +397,6 @@ function onInputCell(payload: { row: number; col: number; val: number }) {
   }
 
   if (inputMode.value === "confirm") {
-    // 確定モードの場合
     console.log(
       `[App.vue] onInputCell: Confirm mode, setting value ${val} to (${row},${col}).`
     );
@@ -337,8 +409,6 @@ function onInputCell(payload: { row: number; col: number; val: number }) {
     setCellValue(row, col, val as SudokuValue);
     updateAllCandidates();
   } else {
-    // 'thinking' モードの場合
-    // 思考モードの場合、候補のトグルを行う
     console.log(
       `[App.vue] onInputCell: Thinking mode, toggling candidate ${val} for (${row},${col}).`
     );
@@ -374,7 +444,6 @@ const allCorrect = computed(() => {
   const g = board.value;
   const isValidGroup = (nums: number[]) =>
     new Set(nums).size === 9 && nums.every((n) => n >= 1 && n <= 9);
-  // 行・列
   for (let i = 0; i < 9; i++) {
     if (
       !isValidGroup(g[i].map((cell) => cell.value)) ||
@@ -382,7 +451,6 @@ const allCorrect = computed(() => {
     )
       return false;
   }
-  // ブロック
   for (let br = 0; br < 3; br++) {
     for (let bc = 0; bc < 3; bc++) {
       const block: number[] = [];

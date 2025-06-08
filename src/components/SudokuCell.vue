@@ -2,45 +2,42 @@
   <div
     class="sudoku-cell"
     :class="[borderClasses, { 'given-cell': cell.isGiven, 'is-selected': isSelected }]"
-    @click="handleMainCellClick" >
-    <div v-if="cell.value !== 0" class="value-wrapper">
+    @click="handleMainCellClick"
+  >
+    <div v-if="cell.value !== 0" class="value-display-wrapper">
       <span class="value-display">{{ cell.value }}</span>
     </div>
 
-    <div
-      v-else-if="inputMode === 'thinking'"
-      class="candidate-display-area" >
+    <div class="candidate-display-area">
       <CandidateGrid
         :autoCandidates="cell.candidates"
         :userCandidates="cell.userCandidates"
-        :isEditable="true"
-        :cellInfo="cell" @toggleCandidate="onToggleCandidate" />
+        :isEditable="inputMode === 'thinking' && !cell.isGiven && cell.value === 0"
+        :cellInfo="cell"
+        @toggleCandidate="onToggleCandidate"
+      />
     </div>
-
-    <div v-else class="value-wrapper">
-      </div>
   </div>
 </template>
 
 <script lang="ts" setup>
 import { computed, defineProps, defineEmits } from 'vue';
-import type { Cell } from '@/types/sudoku';
+import type { Cell, InputMode } from '@/types/sudoku'; // ★修正：InputMode もここからインポート
 import CandidateGrid from './CandidateGrid.vue';
-import type { InputMode } from '@/types/sudoku'; // ★修正：InputMode のインポートパスを '@/types/sudoku' に変更
 
 const props = defineProps<{
   cell: Cell;
-  selectedNumber: number;
-  inputMode: InputMode;
+  selectedNumber: number; // このpropはSudokuCell内では直接使わないが、親からの情報として保持
+  inputMode: InputMode; // 新しいinputModeを渡す
   isSelected: boolean;
 }>();
 
-console.log(`[SudokuCell] Cell (${props.cell.row}, ${props.cell.col}) mounted. Mode: ${props.inputMode}, SelectedNumber: ${props.selectedNumber}, isSelected: ${props.isSelected}`);
+console.log(`[SudokuCell] Cell (${props.cell.row}, ${props.cell.col}) mounted.`);
 
 const emits = defineEmits<{
-  (e: 'selectCell', payload: Cell): void; // Cell選択用
-  (e: 'inputCell', payload: { row: number; col: number; val: number }): void; // 数字入力パネルからの入力用 (App.vueが使用)
-  (e: 'toggleCandidate', payload: { row: number; col: number; candidate: number }): void; // CandidateGridからの候補トグル用
+  (e: 'selectCell', payload: Cell): void;
+  (e: 'inputCell', payload: { row: number; col: number; val: number }): void;
+  (e: 'toggleCandidate', payload: { row: number; col: number; candidate: number }): void;
 }>();
 
 const borderClasses = computed(() => {
@@ -54,19 +51,13 @@ const borderClasses = computed(() => {
   };
 });
 
-// セル全体のメインクリックハンドラ (セルの選択を行う)
 function handleMainCellClick() {
-  if (props.cell.isGiven) return; // 問題の数字は変更不可
-  // if (props.cell.value !== 0) return; // ★この行を削除★
-  // 理由：確定値が入っているセルでも、クリックしたら選択状態になるようにする
-
-  console.log(`[SudokuCell] handleMainCellClick (Cell Select) for cell (${props.cell.row}, ${props.cell.col}).`);
-  emits('selectCell', props.cell); // このセルが選択されたことをApp.vueに通知
+  // isGivenセルは変更不可だが、選択状態にはできる
+  // if (props.cell.isGiven) return; // この行は削除、App.vue側で変更不可のチェックをしている
+  emits('selectCell', props.cell);
 }
 
-// CandidateGrid からの候補トグルイベントを受け取る（そのままApp.vueへ中継）
 function onToggleCandidate(candidate: number) {
-  console.log(`[SudokuCell] onToggleCandidate (from CandidateGrid) for cell (${props.cell.row}, ${props.cell.col}), candidate: ${candidate}`);
   emits('toggleCandidate', {
     row: props.cell.row,
     col: props.cell.col,
@@ -83,7 +74,7 @@ function onToggleCandidate(candidate: number) {
   position: relative;
   background-color: #fff;
   border: 1px solid #999;
-  display: flex;
+  display: flex; /* flexboxで子要素を配置 */
   align-items: center;
   justify-content: center;
   cursor: pointer;
@@ -101,13 +92,46 @@ function onToggleCandidate(candidate: number) {
     border-color: #007ACC !important;
 }
 
-.candidate-display-area {
+/* ★変更点3: 確定値のラッパーを追加し、候補と重ねて表示できるように position: absolute を追加 */
+.value-display-wrapper {
+  position: absolute; /* 親セル基準で位置を決定 */
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
+  z-index: 2; /* 候補より手前に表示 */
+  background-color: transparent; /* 背景透過 */
 }
+
+.value-display {
+  font-size: 1.5rem; /* 確定値は少し大きく */
+  font-weight: bold;
+  color: #000;
+}
+
+/* ★変更点4: 候補表示エリアのスタイリング調整 */
+.candidate-display-area {
+  position: absolute; /* 親セル基準で位置を決定 */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  /* flexbox は CandidateGrid 内で制御 */
+  z-index: 1; /* 確定値より奥に表示 */
+}
+
+/* 確定値があるセルに候補を表示しない、または薄く表示するスタイル */
+.sudoku-cell .candidate-display-area:has(+ .value-display-wrapper > .value-display:not(:empty)) {
+    /* CSS :has() 擬似クラスを使用して、確定値のspanが存在する場合に候補表示を非表示にする */
+    /* ただし、:has() は比較的新しいCSS機能なので、対応ブラウザを確認してください */
+    /* もし:has()が使えない場合、JSで isDisplayCandidates などのcomputedプロパティをセルに追加して制御します */
+    display: none; /* 確定値がある場合は候補を完全に非表示 */
+}
+/* より良い代替案は、Vueのロジックで isEditable と同じように isDisplayCandidates を渡すことです */
+
 
 .border-left-thick { border-left: 4px solid #4401fe !important; }
 .border-top-thick { border-top: 4px solid #4401fe !important; }
@@ -120,18 +144,5 @@ function onToggleCandidate(candidate: number) {
 }
 .given-cell .value-display {
   color: #333;
-}
-
-.value-wrapper {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.value-display {
-  font-size: 1.25rem;
-  font-weight: bold;
-  color: #000;
 }
 </style>
