@@ -23,12 +23,12 @@
       <div
         class="input-zone"
         @click.stop="onClickNumberInputArea" >
-        <span v-if="selectedNumber !== 0" class="selected-number-preview">{{ selectedNumber }}</span>
+        <!-- <span v-if="selectedNumber !== 0" class="selected-number-preview">{{ selectedNumber }}</span> -->
       </div>
     </div>
 
     <div v-else class="value-wrapper">
-      <span v-if="selectedNumber !== 0" class="selected-number-preview">{{ selectedNumber }}</span>
+      <!-- <span v-if="selectedNumber !== 0" class="selected-number-preview">{{ selectedNumber }}</span> -->
     </div>
   </div>
 </template>
