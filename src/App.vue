@@ -144,13 +144,29 @@ function handleKeyDown(event: KeyboardEvent) {
     case 'Backspace':
     case 'Delete':
       if (!selectedCell.value.isGiven && selectedCell.value.value !== 0) {
+        // 確定モードで確定値がある場合、0にする
         onInputCell({ row: newRow, col: newCol, val: 0 });
         event.preventDefault();
-      } else if (!selectedCell.value.isGiven && selectedCell.value.userCandidates.size > 0 && inputMode.value === 'thinking') {
-         selectedCell.value.userCandidates.forEach(cand => {
-            toggleUserCandidate(newRow, newCol, cand as 1|2|3|4|5|6|7|8|9);
-         });
-         event.preventDefault();
+      } else if (!selectedCell.value.isGiven && inputMode.value === 'thinking') {
+        // 思考モードの場合、候補を全て削除
+        // ★★★ ここから修正 ★★★
+        const currentCandidates = selectedCell.value.userCandidates;
+        const candidatesToDelete: (1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9)[] = [];
+        // userCandidates がオブジェクトなので、Object.keys() でキーを走査
+        for (const key in currentCandidates) {
+            const candidateNum = parseInt(key) as (1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9);
+            if (currentCandidates[candidateNum]) { // trueになっている候補のみ対象
+                candidatesToDelete.push(candidateNum);
+            }
+        }
+        
+        if (candidatesToDelete.length > 0) { // 削除すべき候補がある場合のみ処理
+            candidatesToDelete.forEach(cand => {
+                toggleUserCandidate(newRow, newCol, cand);
+            });
+            event.preventDefault();
+        }
+        // ★★★ ここまで修正 ★★★
       }
       return;
     case '1': case '2': case '3': case '4': case '5':
