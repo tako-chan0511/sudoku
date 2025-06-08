@@ -245,9 +245,34 @@ const allCorrect = computed(() => {
 .difficulty-buttons button { margin-right: 8px; padding: 6px 12px; }
 .difficulty-buttons button.active { background-color: #007ACC; color: #fff; }
 .validation-msg { color: red; margin: 8px 0; }
-.selected-display { margin: 8px 0; padding: 4px; }
-.selected-display.highlight { background-color: #e0f2e9; }
-.clear-btn { padding: 1px 4px; font-size: 0.9rem; margin-left: 8px; }
+.selected-display {
+  margin: 8px 0;
+  padding: 4px;
+  /* ★ここを修正/追加します★ */
+  background-color: #f0f0f0; /* 薄いグレーの背景色を設定（見やすさのため） */
+  color: #222; /* 文字色を濃いグレー（ほぼ黒）に設定 */
+  border: 1px solid #ddd; /* 境界線を追加して視認性を高める */
+  border-radius: 4px; /* 角を丸くする */
+}
+/* highlight クラスが適用されているときは、背景色を上書き */
+.selected-display.highlight {
+  background-color: #e0f2e9; /* ハイライト時の背景色（既存） */
+  color: #222; /* ハイライト時も文字色を濃いグレーに維持 */
+}
+
+/* .clear-btn は通常、親の文字色を継承するか、個別に設定 */
+.clear-btn {
+  padding: 1px 4px;
+  font-size: 0.9rem;
+  margin-left: 8px;
+  color: #555; /* ×ボタンの文字色も明確にする */
+  background-color: #eee; /* ×ボタンの背景色 */
+  border: 1px solid #ccc; /* ×ボタンの境界線 */
+  border-radius: 2px;
+}
+.clear-btn:hover {
+  background-color: #ddd;
+}
 .board-wrapper { display: grid; grid-template-columns: repeat(9, 48px); grid-template-rows: repeat(9, 48px); border: 2px solid #007ACC; margin: 0 auto; }
 .congrats { margin: 12px 0; font-size: 1.2rem; color: green; font-weight: bold; }
 .error-msg { margin: 12px 0; font-size: 1rem; color: red; }
