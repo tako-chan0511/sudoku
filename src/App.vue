@@ -207,7 +207,7 @@ function handleKeyDown(event: KeyboardEvent) {
       }
       return;
     case '1': case '2': case '3': case '4': case '5':
-    case '6': case '7': case '7': case '8': case '9': // 修正: 7が重複しています
+    case '6': case '7': case '8': case '9': // 修正: 7が重複しています
       onNumberPicked(parseInt(event.key));
       event.preventDefault();
       return;

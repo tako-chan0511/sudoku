@@ -35,8 +35,6 @@ export type Board = Cell[][]
 // ★追加：InputMode 型をここで定義
 export type InputMode = 'confirm' | 'thinking';
 
----
-
 // ★追加：保存機能のための型定義
 
 /**
