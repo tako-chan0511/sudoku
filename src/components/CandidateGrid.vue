@@ -1,8 +1,10 @@
 <template>
   <div class="candidate-grid">
-    <div v-for="num_val in 9" :key="num_val" :class="`pos-${num_val}`">
-      <span v-if="displayCandidatesMap[num_val as 1]" 
-            @click.stop="onSmallCellClick(num_val)"> 
+    <div v-for="num_val in 9" :key="num_val" class="candidate-item-wrapper">
+      <span
+        v-if="displayCandidatesMap[num_val as 1]"
+        @click.stop="onSmallCellClick(num_val)"
+      >
         {{ num_val }}
       </span>
     </div>
@@ -32,14 +34,17 @@ const emits = defineEmits<{
 
 const displayCandidatesMap = computed(() => {
     console.log(`[CandidateGrid] displayCandidatesMap re-evaluating. userCandidates:`, JSON.parse(JSON.stringify(props.userCandidates)));
+    // ★重要: ここを userCandidates のみ表示に戻す
     return props.userCandidates;
 });
+
 
 function onSmallCellClick(n: number) {
   console.log(`[CandidateGrid] onSmallCellClick called for candidate ${n}. isEditable: ${props.isEditable}`);
 
   if (!props.isEditable) {
     console.log(`[CandidateGrid] Not editable, returning.`);
+    emits("selectCell", props.cellInfo);
     return;
   }
 
@@ -58,45 +63,34 @@ function onSmallCellClick(n: number) {
   grid-template-rows: repeat(3, 1fr);
   width: 100%;
   height: 100%;
-  border: 1px solid #ccc;
+  /* border: 1px solid #ccc;  これは以前から削除済み */
   box-sizing: border-box;
-  position: relative; /* 子要素の絶対位置の基準となる */
+  /* position: relative;  CandidateGridのルート要素には不要、SudokuCellがrelativeなので */
 }
 
 /* 各数字のラッパーdiv */
-.candidate-grid > div { /* 直接の子要素のdiv */
-  display: flex; /* div内でspanを中央に配置するため */
+.candidate-item-wrapper {
+  display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%; /* 各グリッドセル内でのサイズ */
+  width: 100%;
   height: 100%;
-  position: relative; /* spanのabsolute位置の基準 */
-  cursor: pointer; /* クリック可能なことを示す */
+  /* ★変更点1: position: relative; は削除 */
+  /* position: relative; */
+  cursor: pointer;
   user-select: none;
 }
 
-/* 数字を表示する span 要素のスタイル（これは各divの子要素になる） */
-.candidate-grid span {
-  /* position: absolute; は不要になるか、あるいは相対位置で調整 */
-  /* ここでの position: absolute は親の .candidate-grid > div に対して相対 */
-  /* したがって、position: absolute を削除し、親のflexboxで中央配置させる */
-  /* width: calc(100% / 3); */ /* 親のdivがすでに3分の1サイズなので不要 */
-  /* height: calc(100% / 3); */ /* 親のdivがすでに3分の1サイズなので不要 */
-  
+/* 数字を表示する span 要素のスタイル */
+.candidate-item-wrapper span {
   font-size: 0.65rem;
   color: #333;
   font-weight: bold;
-  line-height: 1; /* 1行表示 */
-  /* transform: translate(-50%, -50%); */ /* 必要なら追加 */
-  /* top: 50%; left: 50%; */ /* 必要なら追加 */
+  line-height: 1;
 }
 
-/* 旧pos-Nクラスは削除 */
-/* .candidate-grid span.pos-1 { ... } */
-/* 理由：各divがすでに3x3のグリッドセルを占めているため、その中のspanは中央に配置するだけで良い。
-        個別の位置指定は不要になる。*/
-
-.candidate-grid > div:hover { /* ホバー時の背景色を各divに適用 */
+/* ホバー時の背景色を各divに適用 */
+.candidate-item-wrapper:hover {
   background-color: #f0f0f0;
 }
 </style>

@@ -71,16 +71,17 @@ function onToggleCandidate(candidate: number) {
   width: 48px;
   height: 48px;
   box-sizing: border-box;
-  position: relative;
+  position: relative; /* 子要素のabsolute基準のため必須 */
   background-color: #fff;
-  border: 1px solid #999;
-  display: flex; /* flexboxで子要素を配置 */
-  align-items: center;
-  justify-content: center;
+  border: 1px solid #999; /* セル自体のボーダー */
   cursor: pointer;
   user-select: none;
+  /* 他の display, align-items, justify-content は全て削除済みであることを確認 */
+  /* transition は残しても良い */
   transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
 }
+
+/* 選択時のボーダースタイルはそのまま */
 .sudoku-cell.is-selected {
   border: 2px solid #007ACC !important;
   box-shadow: 0 0 5px rgba(0, 122, 204, 0.5);
@@ -92,57 +93,50 @@ function onToggleCandidate(candidate: number) {
     border-color: #007ACC !important;
 }
 
-/* ★変更点3: 確定値のラッパーを追加し、候補と重ねて表示できるように position: absolute を追加 */
-.value-display-wrapper {
-  position: absolute; /* 親セル基準で位置を決定 */
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2; /* 候補より手前に表示 */
-  background-color: transparent; /* 背景透過 */
-}
-
-.value-display {
-  font-size: 1.5rem; /* 確定値は少し大きく */
-  font-weight: bold;
-  color: #000;
-}
-
-/* ★変更点4: 候補表示エリアのスタイリング調整 */
-.candidate-display-area {
-  position: absolute; /* 親セル基準で位置を決定 */
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  /* flexbox は CandidateGrid 内で制御 */
-  z-index: 1; /* 確定値より奥に表示 */
-}
-
-/* 確定値があるセルに候補を表示しない、または薄く表示するスタイル */
-.sudoku-cell .candidate-display-area:has(+ .value-display-wrapper > .value-display:not(:empty)) {
-    /* CSS :has() 擬似クラスを使用して、確定値のspanが存在する場合に候補表示を非表示にする */
-    /* ただし、:has() は比較的新しいCSS機能なので、対応ブラウザを確認してください */
-    /* もし:has()が使えない場合、JSで isDisplayCandidates などのcomputedプロパティをセルに追加して制御します */
-    display: none; /* 確定値がある場合は候補を完全に非表示 */
-}
-/* より良い代替案は、Vueのロジックで isEditable と同じように isDisplayCandidates を渡すことです */
-
-
+/* 3x3ブロックの太いボーダーはそのまま */
 .border-left-thick { border-left: 4px solid #4401fe !important; }
 .border-top-thick { border-top: 4px solid #4401fe !important; }
 .border-right-thick { border-right: 4px solid #4401fe !important; }
 .border-bottom-thick { border-bottom: 4px solid #4401fe !important; }
 
+/* 与えられた初期値セルのスタイルはそのまま */
 .given-cell {
   background-color: #EFEFEF;
   cursor: default;
 }
 .given-cell .value-display {
   color: #333;
+}
+
+/* 値と候補のラッパー、それぞれのスタイルはそのまま */
+.value-display-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex; /* これらは内部で中央寄せするため必要 */
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  background-color: transparent;
+}
+.value-display {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #000;
+}
+.candidate-display-area {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+/* 確定値があるセルに候補を表示しないスタイルはそのまま */
+.sudoku-cell .candidate-display-area:has(+ .value-display-wrapper > .value-display:not(:empty)) {
+    display: none;
 }
 </style>
