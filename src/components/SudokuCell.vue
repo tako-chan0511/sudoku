@@ -1,7 +1,14 @@
 <template>
   <div
     class="sudoku-cell"
-    :class="[borderClasses, { 'given-cell': cell.isGiven, 'is-selected': isSelected }]"
+    :class="[
+      borderClasses,
+      {
+        'given-cell': cell.isGiven,
+        'is-selected': isSelected,
+        'is-related': isRelated // ★変更点1: isRelated クラスを追加
+      }
+    ]"
     @click="handleMainCellClick"
   >
     <div v-if="cell.value !== 0" class="value-display-wrapper">
@@ -22,14 +29,15 @@
 
 <script lang="ts" setup>
 import { computed, defineProps, defineEmits } from 'vue';
-import type { Cell, InputMode } from '@/types/sudoku'; // ★修正：InputMode もここからインポート
+import type { Cell, InputMode } from '@/types/sudoku';
 import CandidateGrid from './CandidateGrid.vue';
 
 const props = defineProps<{
   cell: Cell;
-  selectedNumber: number; // このpropはSudokuCell内では直接使わないが、親からの情報として保持
-  inputMode: InputMode; // 新しいinputModeを渡す
+  selectedNumber: number;
+  inputMode: InputMode;
   isSelected: boolean;
+  isRelated: boolean; // ★変更点2: isRelated プロパティを受け取る
 }>();
 
 console.log(`[SudokuCell] Cell (${props.cell.row}, ${props.cell.col}) mounted.`);
@@ -37,7 +45,7 @@ console.log(`[SudokuCell] Cell (${props.cell.row}, ${props.cell.col}) mounted.`)
 const emits = defineEmits<{
   (e: 'selectCell', payload: Cell): void;
   (e: 'inputCell', payload: { row: number; col: number; val: number }): void;
-  (e: 'toggleCandidate', payload: { row: number; col: number; candidate: number }): void;
+  (e: 'toggleCandidate', payload: { row: number; col; candidate: number }): void;
 }>();
 
 const borderClasses = computed(() => {
@@ -52,8 +60,6 @@ const borderClasses = computed(() => {
 });
 
 function handleMainCellClick() {
-  // isGivenセルは変更不可だが、選択状態にはできる
-  // if (props.cell.isGiven) return; // この行は削除、App.vue側で変更不可のチェックをしている
   emits('selectCell', props.cell);
 }
 
@@ -71,20 +77,24 @@ function onToggleCandidate(candidate: number) {
   width: 48px;
   height: 48px;
   box-sizing: border-box;
-  position: relative; /* 子要素のabsolute基準のため必須 */
-  background-color: #fff;
-  border: 1px solid #999; /* セル自体のボーダー */
+  position: relative;
+  background-color: #fff; /* デフォルトの背景色 */
+  border: 1px solid #999;
   cursor: pointer;
   user-select: none;
-  /* 他の display, align-items, justify-content は全て削除済みであることを確認 */
-  /* transition は残しても良い */
-  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out, background-color 0.15s ease-in-out; /* ★変更点4: background-color もトランジション対象に追加 */
 }
 
-/* 選択時のボーダースタイルはそのまま */
+/* ★変更点3: 関連セル用のスタイルを追加 */
+.sudoku-cell.is-related {
+  background-color: #e0f2f7; /* 薄い水色の背景色 */
+}
+
+/* 選択セルは関連セルのスタイルを上書きするように、より優先順位を高くする */
 .sudoku-cell.is-selected {
   border: 2px solid #007ACC !important;
   box-shadow: 0 0 5px rgba(0, 122, 204, 0.5);
+  background-color: #b0e0e6; /* 選択セルの背景色は、関連セルの色より少し濃くするなどして区別する */
 }
 .sudoku-cell.is-selected.border-left-thick,
 .sudoku-cell.is-selected.border-top-thick,
@@ -115,7 +125,7 @@ function onToggleCandidate(candidate: number) {
   left: 0;
   width: 100%;
   height: 100%;
-  display: flex; /* これらは内部で中央寄せするため必要 */
+  display: flex;
   align-items: center;
   justify-content: center;
   z-index: 2;

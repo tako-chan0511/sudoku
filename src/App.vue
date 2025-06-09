@@ -27,7 +27,7 @@
       <button @click="clearPuzzle" style="margin-left: 8px">空盤面</button>
       <button @click="resetAll" style="margin-left: 8px">リセット</button>
       <button @click="saveCurrentPuzzle" style="margin-left: 8px">盤面保存</button>
-      <button @click="showSavedPuzzles = true" style="margin-left: 8px">履歴を見る</button>
+      <button @click="showSavedPuzzles = true" style="margin-left: 8px">盤面保存履歴</button>
     </div>
     <div class="input-mode-buttons">
       <button
@@ -57,7 +57,7 @@
             ? selectedCell.row === cell.row && selectedCell.col === cell.col
             : false
         "
-        @selectCell="onSelectCellFromBoard"
+        :isRelated="isRelatedCell(cell)" @selectCell="onSelectCellFromBoard"
         @inputCell="onInputCell"
         @toggleCandidate="onToggleCandidate"
       />
@@ -81,8 +81,6 @@
 </template>
 
 <script lang="ts" setup>
-// ... (script 部分はそのまま。変更なし) ...
-
 import { ref, computed } from "vue";
 import type { Cell, SavedPuzzle, SavedCellData, Candidates, Board } from "@/types/sudoku";
 import { useSudoku } from "@/composables/useSudoku";
@@ -207,7 +205,7 @@ function handleKeyDown(event: KeyboardEvent) {
       }
       return;
     case '1': case '2': case '3': case '4': case '5':
-    case '6': case '7': case '8': case '9': // 修正: 7が重複しています
+    case '6': case '7': case '8': case '9': // 修正済み
       onNumberPicked(parseInt(event.key));
       event.preventDefault();
       return;
@@ -219,6 +217,38 @@ function handleKeyDown(event: KeyboardEvent) {
     console.log(`[App.vue] handleKeyDown: Moved to (${newRow}, ${newCol})`);
   }
 }
+
+// ★追加: 関連セルを判定する関数
+function isRelatedCell(cell: Cell): boolean {
+  if (!selectedCell.value) {
+    return false; // セルが選択されていない場合は関連なし
+  }
+  // 選択セル自身は関連セルとみなさない（選択ハイライトを優先するため）
+  if (cell.row === selectedCell.value.row && cell.col === selectedCell.value.col) {
+    return false;
+  }
+
+  const selectedRow = selectedCell.value.row;
+  const selectedCol = selectedCell.value.col;
+
+  // 同じ行か列か
+  if (cell.row === selectedRow || cell.col === selectedCol) {
+    return true;
+  }
+
+  // 同じ3x3ブロックか
+  const selectedBlockRow = Math.floor(selectedRow / 3);
+  const selectedBlockCol = Math.floor(selectedCol / 3);
+  const cellBlockRow = Math.floor(cell.row / 3);
+  const cellBlockCol = Math.floor(cell.col / 3);
+
+  if (selectedBlockRow === cellBlockRow && selectedBlockCol === cellBlockCol) {
+    return true;
+  }
+
+  return false;
+}
+
 
 function toggleInputMode() {
   inputMode.value = inputMode.value === 'confirm' ? 'thinking' : 'confirm';
@@ -608,9 +638,8 @@ function loadPuzzle(id: string) {
   }
 
   // useSudokuインスタンスを再初期化する
-  // board.valueに直接代入するのではなく、新しいapiインスタンスのboard.valueを使う
-  let newUseSudokuApi = useSudoku(newGamePuzzle); // 新しいAPIインスタンスを作成
-  board.value = newUseSudokuApi.board.value; // 新しいボードで置き換え
+  let newUseSudokuApi = useSudoku(newGamePuzzle);
+  board.value = newUseSudokuApi.board.value;
   setCellValue = newUseSudokuApi.setCellValue;
   toggleUserCandidate = newUseSudokuApi.toggleUserCandidate;
   resetBoard = newUseSudokuApi.resetBoard;
@@ -622,32 +651,23 @@ function loadPuzzle(id: string) {
       const savedCell = puzzleToLoad.boardData[r][c];
       const currentCell = board.value[r][c]; 
 
-      // ユーザーが入力した確定値をセット
       if (savedCell.value !== 0 && !savedCell.isGiven) {
-        // 直接 setCellValue を呼ぶと conflicts が発生する可能性があるので、
-        // isConflict を回避するために一旦候補を更新する前に値を設定
         board.value[r][c].value = savedCell.value as SudokuValue;
       } else if (savedCell.value === 0 && currentCell.value !== 0 && !currentCell.isGiven) {
-         // 元のパズルで確定値だったが、保存時にはユーザーが0にした場合も考慮
          board.value[r][c].value = 0;
       }
 
-      // userCandidates を復元
-      // まず既存の候補をクリア
-      // (新しいuseSudokuインスタンスで初期化されているので通常は不要だが、念のため)
       for (let i = 1; i <= 9; i++) {
         if (currentCell.userCandidates[i as (1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9)]) {
           currentCell.userCandidates[i as (1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9)] = false;
         }
       }
-      // 保存された候補をセット
       savedCell.userCandidates.forEach(candidate => {
         currentCell.userCandidates[candidate as (1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9)] = true;
       });
     }
   }
 
-  // 確定値とユーザー候補をすべてセットし終えてから、自動候補を更新
   updateAllCandidates();
 
   selectedCell.value = null;
