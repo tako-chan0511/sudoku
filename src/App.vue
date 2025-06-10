@@ -4,8 +4,18 @@
 
     <!-- モード選択 -->
     <div class="mode-selector">
-       <button :class="{ active: gameMode === 'normal' }" @click="exitTrainingMode()">通常モード</button>
-       <button :class="{ active: gameMode === 'training' }" @click="gameMode = 'training'">トレーニング</button>
+      <button
+        :class="{ active: gameMode === 'normal' }"
+        @click="exitTrainingMode()"
+      >
+        通常モード
+      </button>
+      <button
+        :class="{ active: gameMode === 'training' }"
+        @click="gameMode = 'training'"
+      >
+        トレーニング
+      </button>
     </div>
 
     <!-- 通常モード用の難易度選択 -->
@@ -31,35 +41,73 @@
     </div>
 
     <!-- トレーニングモード用のテクニック選択 -->
-    <div v-if="gameMode === 'training'" class="training-buttons">
-        <button v-for="tech in trainingPuzzles" :key="tech.key" @click="startTraining(tech)">
-            {{ tech.name }}
-        </button>
+    <div v-if="gameMode === 'training'" class="training-select">
+      <!-- モードバナー -->
+      <div v-if="trainingBanner" class="training-banner">
+        {{ trainingBanner }}
+      </div>
+      <!-- プルダウンメニュー -->
+      <select v-model="selectedTechniqueKey" @change="onSelectTechnique">
+        <option disabled value="">テクニックを選択してください</option>
+        <option
+          v-for="tech in trainingPuzzles"
+          :key="tech.key"
+          :value="tech.key"
+        >
+          {{ tech.name }}
+        </option>
+      </select>
     </div>
 
     <div class="init-buttons">
-       <!-- ★変更: .start-btn クラスを削除 -->
-      <button v-if="gameMode === 'normal'" @click="startGame">ゲーム開始</button>
+      <!-- ★変更: .start-btn クラスを削除 -->
+      <button v-if="gameMode === 'normal'" @click="startGame">
+        ゲーム開始
+      </button>
       <!-- トレーニングモードのヒントボタン -->
-      <button v-if="gameMode === 'training' && currentTrainingTechnique" @click="showTechniqueHint" class="hint-btn">ヒント表示</button>
-      <button v-if="gameMode==='training'" @click="exitTrainingMode()">
-        通常モードに戻る
+      <button
+        v-if="gameMode === 'training' && currentTrainingTechnique"
+        @click="showTechniqueHint"
+        class="hint-btn"
+      >
+        {{ showTechniqueModal ? "説明表示" : "ヒント表示" }}
       </button>
 
-      <button @click="clearPuzzle" style="margin-left: 8px">空盤面</button>
-      <button @click="resetAll" style="margin-left: 8px">リセット</button>
-      <button @click="saveCurrentPuzzle" style="margin-left: 8px">盤面保存</button>
-      <button @click="showSavedPuzzles = true" style="margin-left: 8px">盤面保存履歴</button>
+      <button
+        v-if="gameMode === 'normal'"
+        @click="clearPuzzle"
+        style="margin-left: 8px"
+      >
+        空盤面
+      </button>
+      <button
+        v-if="gameMode === 'normal'"
+        @click="resetAll"
+        style="margin-left: 8px"
+      >
+        リセット
+      </button>
+      <button @click="saveCurrentPuzzle" style="margin-left: 8px">
+        盤面保存
+      </button>
+      <button
+        v-if="gameMode === 'normal'"
+        @click="showSavedPuzzles = true"
+        style="margin-left: 8px"
+      >
+        盤面保存履歴
+      </button>
     </div>
     <div class="input-mode-buttons">
       <button
+        v-if="gameMode === 'normal'"
         :class="{ active: inputMode === 'thinking' }"
         @click="toggleInputMode"
       >
         候補入力モード
       </button>
     </div>
-    <NumberPicker @pick="onNumberPicked" />
+    <NumberPicker v-if="gameMode === 'normal'" @pick="onNumberPicked" />
     <div v-if="errorMessage" class="validation-msg">{{ errorMessage }}</div>
 
     <div v-if="allCorrect" class="congrats">Congratulations！！！</div>
@@ -81,7 +129,7 @@
         "
         :isRelated="isRelatedCell(cell)"
         :highlightType="getHighlightType(cell)"
-        :is-training="gameMode === 'training'"  
+        :is-training="gameMode === 'training'"
         :hintRemovalApplied="hintRemovalApplied"
         :removalCandidates="currentTrainingTechnique?.removalCandidates || []"
         @selectCell="onSelectCellFromBoard"
@@ -91,58 +139,84 @@
     </div>
 
     <!-- 保存されたパズルのモーダル -->
-    <div v-if="showSavedPuzzles" class="modal-overlay" @click.self="showSavedPuzzles = false">
+    <div
+      v-if="showSavedPuzzles"
+      class="modal-overlay"
+      @click.self="showSavedPuzzles = false"
+    >
       <div class="modal-content">
         <h2>保存されたパズル</h2>
         <ul v-if="savedPuzzles.length > 0">
-          <li v-for="puzzle in sortedSavedPuzzles" :key="puzzle.id" class="saved-puzzle-item">
-            <span>{{ puzzle.name }} ({{ new Date(puzzle.timestamp).toLocaleString() }}) - {{ puzzle.difficulty }}</span>
+          <li
+            v-for="puzzle in sortedSavedPuzzles"
+            :key="puzzle.id"
+            class="saved-puzzle-item"
+          >
+            <span
+              >{{ puzzle.name }} ({{
+                new Date(puzzle.timestamp).toLocaleString()
+              }}) - {{ puzzle.difficulty }}</span
+            >
             <div>
-                <button @click="loadPuzzle(puzzle.id)">ロード</button>
-                <button @click="deletePuzzle(puzzle.id)" class="delete-btn">削除</button>
+              <button @click="loadPuzzle(puzzle.id)">ロード</button>
+              <button @click="deletePuzzle(puzzle.id)" class="delete-btn">
+                削除
+              </button>
             </div>
           </li>
         </ul>
         <p v-else>保存されたパズルはありません。</p>
-        <button @click="showSavedPuzzles = false" class="close-modal-btn">閉じる</button>
+        <button @click="showSavedPuzzles = false" class="close-modal-btn">
+          閉じる
+        </button>
       </div>
     </div>
 
     <!-- テクニック解説モーダル -->
-     <div
-   v-if="showTechniqueModal"
-   class="modal-overlay"
-   @click.self="showTechniqueModal = false"
- >
-   <div
-     class="modal-content"
-     :style="{
-       position: 'absolute',
-       top: modalPosition.y + 'px',
-       left: modalPosition.x + 'px'
-     }"
-     @mousedown.prevent="onModalMouseDown"
-   >
+    <div
+      v-if="showTechniqueModal"
+      class="modal-overlay"
+      @click.self="showTechniqueModal = false"
+    >
+      <div
+        class="modal-content"
+        :style="{
+          position: 'absolute',
+          top: modalPosition.y + 'px',
+          left: modalPosition.x + 'px',
+        }"
+        @mousedown.prevent="onModalMouseDown"
+      >
         <h2>{{ currentTrainingTechnique?.name }}</h2>
         <p>{{ currentTrainingTechnique?.description }}</p>
-        <button @click="showTechniqueModal = false" class="close-modal-btn">閉じる</button>
-   </div>
- </div>
-   </div>
- 
+        <button @click="showTechniqueModal = false" class="close-modal-btn">
+          閉じる
+        </button>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script lang="ts" setup>
 import { ref, computed } from "vue";
-import type { Cell, SavedPuzzle, SavedCellData, Candidates, Board } from "@/types/sudoku";
+import type {
+  Cell,
+  SavedPuzzle,
+  SavedCellData,
+  Candidates,
+  Board,
+} from "@/types/sudoku";
 import { useSudoku } from "@/composables/useSudoku";
 import SudokuCell from "@/components/SudokuCell.vue";
 import NumberPicker from "@/components/NumberPicker.vue";
 import { makePuzzleByDifficulty } from "@/utils/puzzleGenerator";
 // トレーニング用のデータをインポート
-import { trainingPuzzles, type TrainingTechnique } from "@/utils/trainingPuzzles";
+import {
+  trainingPuzzles,
+  type TrainingTechnique,
+} from "@/utils/trainingPuzzles";
 import { nextTick, onMounted } from "vue";
-import { watch , onBeforeUnmount} from 'vue';
+import { watch, onBeforeUnmount } from "vue";
 
 // モーダル位置
 const modalPosition = ref({ x: 0, y: 0 });
@@ -171,32 +245,36 @@ function onMouseUp() {
 }
 
 onMounted(() => {
-  window.addEventListener('mousemove', onMouseMove);
-  window.addEventListener('mouseup', onMouseUp);
+  window.addEventListener("mousemove", onMouseMove);
+  window.addEventListener("mouseup", onMouseUp);
 });
 onBeforeUnmount(() => {
-  window.removeEventListener('mousemove', onMouseMove);
-  window.removeEventListener('mouseup', onMouseUp);
+  window.removeEventListener("mousemove", onMouseMove);
+  window.removeEventListener("mouseup", onMouseUp);
 });
 
 /**
  * CandidateGrid.vue から emit された toggleCandidate を
  * useSudoku の toggleUserCandidate に渡すラッパー
  */
-function onToggleCandidate(payload: { row: number; col: number; candidate: 1|2|3|4|5|6|7|8|9 }) {
+function onToggleCandidate(payload: {
+  row: number;
+  col: number;
+  candidate: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+}) {
   toggleUserCandidate(payload.row, payload.col, payload.candidate);
 }
 // UUID生成のための簡易関数
 function generateUUID(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    const r = Math.random() * 16 | 0;
-    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
     return v.toString(16);
   });
 }
 
 // 型
-type Difficulty = "easy" | "medium" | "hard" ; // trainingを追加
+type Difficulty = "easy" | "medium" | "hard"; // trainingを追加
 type SudokuValue = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 type InputMode = "confirm" | "thinking";
 
@@ -209,14 +287,14 @@ const selectedCell = ref<Cell | null>(null);
 const showSavedPuzzles = ref(false);
 
 // トレーニングモード用の状態
-const gameMode = ref<'normal' | 'training'>('normal');
+const gameMode = ref<"normal" | "training">("normal");
 const showTechniqueModal = ref(false);
 const currentTrainingTechnique = ref<TrainingTechnique | null>(null);
 const highlightedCells = ref<{ row: number; col: number; type: string }[]>([]);
 
 // gameMode が変わったらトレーニング専用ステートだけ切り替え
 watch(gameMode, (mode) => {
-  if (mode === 'normal') {
+  if (mode === "normal") {
     // トレーニング用のハイライトとヒントフラグだけをクリア
     highlightedCells.value = [];
     hintRemovalApplied.value = false;
@@ -243,11 +321,11 @@ let {
 } = useSudoku(gamePuzzle as SudokuValue[][]);
 
 const savedPuzzles = ref<SavedPuzzle[]>([]);
-const LOCAL_STORAGE_KEY = 'sudokuSavedPuzzles';
+const LOCAL_STORAGE_KEY = "sudokuSavedPuzzles";
 
 // --- ライフサイクル ---
 onMounted(() => {
-  const appElement = document.getElementById('app');
+  const appElement = document.getElementById("app");
   if (appElement) {
     appElement.focus();
   }
@@ -286,44 +364,66 @@ const allCorrect = computed(() => {
   return true;
 });
 
-
 // --- メソッド ---
 
 // トレーニングモードを開始
+const trainingBanner = ref<string | null>(null);
 function startTraining(technique: TrainingTechnique) {
-    console.log(`[App.vue] Starting training for: ${technique.name}`);
-    errorMessage.value = "";
-    currentTrainingTechnique.value = technique;
-    // currentDifficulty.value = 'training'; // 難易度をtrainingに設定
-    gameMode.value = 'training';           // ★★ ここでモードも training に切り替える ★★
-    highlightedCells.value = []; // ハイライトをリセット
+  // ① いったん空盤面にクリア
+  clearPuzzle();  
+  console.log(`[App.vue] Starting training for: ${technique.name}`);
+  errorMessage.value = "";
+  // ② トレーニング状態設定
+  currentTrainingTechnique.value = technique;
+  // currentDifficulty.value = 'training'; // 難易度をtrainingに設定
+  gameMode.value = "training"; // ★★ ここでモードも training に切り替える ★★
+  highlightedCells.value = []; // ハイライトをリセット
 
-    // ★★★ ここに1行追加 ★★★
-    inputMode.value = 'thinking'; // 自動的に候補入力モードにする！
-    // ★★★★★★★★★★★★★★★
+  // ★★★ ここに1行追加 ★★★
+  inputMode.value = "thinking"; // 自動的に候補入力モードにする！
+  // ★★★★★★★★★★★★★★★
 
-    // useSudokuに渡すために型を変換
-    const puzzleForSudoku = technique.puzzle.map(row => row.map(cell => cell as SudokuValue));
-    gamePuzzle = puzzleForSudoku;
+  // useSudokuに渡すために型を変換
+  const puzzleForSudoku = technique.puzzle.map((row) =>
+    row.map((cell) => cell as SudokuValue)
+  );
+  gamePuzzle = puzzleForSudoku;
 
-    const api = useSudoku(gamePuzzle);
-    board.value = api.board.value;
-    setCellValue = api.setCellValue;
-    toggleUserCandidate = api.toggleUserCandidate;
-    resetBoard = api.resetBoard;
-    updateAllCandidates = api.updateAllCandidates;
-    updateAllCandidates(); // ここで計算された候補数字が表示されるようになる
+  const api = useSudoku(gamePuzzle);
+  board.value = api.board.value;
+  setCellValue = api.setCellValue;
+  toggleUserCandidate = api.toggleUserCandidate;
+  resetBoard = api.resetBoard;
+  updateAllCandidates = api.updateAllCandidates;
+  updateAllCandidates(); // ここで計算された候補数字が表示されるようになる
 
-    selectedNumber.value = 0;
-    selectedCell.value = null;
+  selectedNumber.value = 0;
+  selectedCell.value = null;
 
-    showTechniqueModal.value = true; // 解説モーダルを表示
+  showTechniqueModal.value = true; // 解説モーダルを表示
+
+  gameMode.value = "training";
+  trainingBanner.value = `🎓 トレーニングモード：${technique.name}`;
+   
+}
+
+// トレーニングモードのテクニック選択用のキー
+const selectedTechniqueKey = ref<string>("");
+
+function onSelectTechnique() {
+  const key = selectedTechniqueKey.value;
+  const tech = trainingPuzzles.find((t) => t.key === key);
+  if (tech) {
+    startTraining(tech);
+    // 再選択を可能にするため、いったん選択値をクリア
+    selectedTechniqueKey.value = "";
+  }
 }
 
 // トレーニングモードを終了
 function exitTrainingMode() {
   // ① モードを通常に
-  gameMode.value = 'normal';
+  gameMode.value = "normal";
   // ② トレーニング状態をまるごとクリア
   currentTrainingTechnique.value = null;
   highlightedCells.value = [];
@@ -333,31 +433,33 @@ function exitTrainingMode() {
   startGame();
 }
 
-
 const hintRemovalApplied = ref(false);
 // トレーニングモードでヒントを表示
 function showTechniqueHint() {
   if (!currentTrainingTechnique.value) return;
+  // 既存のハイライト＆削除フラグ処理…
   highlightedCells.value = currentTrainingTechnique.value.highlight;
 
   if (currentTrainingTechnique.value.removalCandidates) {
     hintRemovalApplied.value = true;
   }
+  // ヒント解説モーダルを再表示
+  // showTechniqueModal.value = true;
 }
 // セルのハイライトタイプを取得
 function getHighlightType(cell: Cell): string | null {
   // ① まず primary を探す
   const primary = highlightedCells.value.find(
-    h => h.row === cell.row && h.col === cell.col && h.type === 'primary'
+    (h) => h.row === cell.row && h.col === cell.col && h.type === "primary"
   );
   if (primary) {
-    return 'primary';
+    return "primary";
   }
   // ② 次に secondary を探す
   const secondary = highlightedCells.value.find(
-    h => h.row === cell.row && h.col === cell.col && h.type === 'secondary'
+    (h) => h.row === cell.row && h.col === cell.col && h.type === "secondary"
   );
-  return secondary ? 'secondary' : null;
+  return secondary ? "secondary" : null;
 }
 
 function handleKeyDown(event: KeyboardEvent) {
@@ -374,47 +476,66 @@ function handleKeyDown(event: KeyboardEvent) {
   let moved = false;
 
   switch (event.key) {
-    case 'ArrowUp':
+    case "ArrowUp":
       newRow = Math.max(0, newRow - 1);
       moved = true;
       break;
-    case 'ArrowDown':
+    case "ArrowDown":
       newRow = Math.min(8, newRow + 1);
       moved = true;
       break;
-    case 'ArrowLeft':
+    case "ArrowLeft":
       newCol = Math.max(0, newCol - 1);
       moved = true;
       break;
-    case 'ArrowRight':
+    case "ArrowRight":
       newCol = Math.min(8, newCol + 1);
       moved = true;
       break;
-    case 'Backspace':
-    case 'Delete':
+    case "Backspace":
+    case "Delete":
       if (!selectedCell.value.isGiven && selectedCell.value.value !== 0) {
         onInputCell({ row: newRow, col: newCol, val: 0 });
         event.preventDefault();
-      } else if (!selectedCell.value.isGiven && inputMode.value === 'thinking') {
+      } else if (
+        !selectedCell.value.isGiven &&
+        inputMode.value === "thinking"
+      ) {
         const currentCandidates = selectedCell.value.userCandidates;
         const candidatesToDelete: (1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9)[] = [];
         for (const key in currentCandidates) {
-            const candidateNum = parseInt(key) as (1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9);
-            if (currentCandidates[candidateNum]) {
-                candidatesToDelete.push(candidateNum);
-            }
+          const candidateNum = parseInt(key) as
+            | 1
+            | 2
+            | 3
+            | 4
+            | 5
+            | 6
+            | 7
+            | 8
+            | 9;
+          if (currentCandidates[candidateNum]) {
+            candidatesToDelete.push(candidateNum);
+          }
         }
 
         if (candidatesToDelete.length > 0) {
-            candidatesToDelete.forEach(cand => {
-                toggleUserCandidate(newRow, newCol, cand);
-            });
-            event.preventDefault();
+          candidatesToDelete.forEach((cand) => {
+            toggleUserCandidate(newRow, newCol, cand);
+          });
+          event.preventDefault();
         }
       }
       return;
-    case '1': case '2': case '3': case '4': case '5':
-    case '6': case '7': case '8': case '9':
+    case "1":
+    case "2":
+    case "3":
+    case "4":
+    case "5":
+    case "6":
+    case "7":
+    case "8":
+    case "9":
       onNumberPicked(parseInt(event.key));
       event.preventDefault();
       return;
@@ -430,7 +551,10 @@ function isRelatedCell(cell: Cell): boolean {
   if (!selectedCell.value) {
     return false;
   }
-  if (cell.row === selectedCell.value.row && cell.col === selectedCell.value.col) {
+  if (
+    cell.row === selectedCell.value.row &&
+    cell.col === selectedCell.value.col
+  ) {
     return false;
   }
 
@@ -453,9 +577,8 @@ function isRelatedCell(cell: Cell): boolean {
   return false;
 }
 
-
 function toggleInputMode() {
-  inputMode.value = inputMode.value === 'confirm' ? 'thinking' : 'confirm';
+  inputMode.value = inputMode.value === "confirm" ? "thinking" : "confirm";
   errorMessage.value = "";
 }
 
@@ -465,7 +588,7 @@ function setDifficulty(diff: Difficulty) {
 }
 
 function startGame() {
-  gameMode.value = 'normal';  
+  gameMode.value = "normal";
   console.log("[App.vue] Starting new game...");
   errorMessage.value = "";
   currentTrainingTechnique.value = null; // トレーニング状態をリセット
@@ -483,7 +606,7 @@ function startGame() {
   selectedNumber.value = 0;
   nextTick(() => {
     selectedCell.value = flatCells.value.length > 0 ? flatCells.value[0] : null;
-    const appElement = document.getElementById('app');
+    const appElement = document.getElementById("app");
     if (appElement) {
       appElement.focus();
     }
@@ -509,7 +632,7 @@ function clearPuzzle() {
   selectedNumber.value = 0;
   nextTick(() => {
     selectedCell.value = flatCells.value.length > 0 ? flatCells.value[0] : null;
-    const appElement = document.getElementById('app');
+    const appElement = document.getElementById("app");
     if (appElement) {
       appElement.focus();
     }
@@ -530,7 +653,7 @@ function resetAll() {
   selectedNumber.value = 0;
   nextTick(() => {
     selectedCell.value = flatCells.value.length > 0 ? flatCells.value[0] : null;
-    const appElement = document.getElementById('app');
+    const appElement = document.getElementById("app");
     if (appElement) {
       appElement.focus();
     }
@@ -601,7 +724,9 @@ function onInputCell(payload: { row: number; col: number; val: number }) {
   }
   if (inputMode.value === "confirm") {
     if (isConflict(row, col, val)) {
-      errorMessage.value = `重複: (${row + 1},${col + 1}) に ${val} は置けません`;
+      errorMessage.value = `重複: (${row + 1},${
+        col + 1
+      }) に ${val} は置けません`;
       return;
     }
     setCellValue(row, col, val as SudokuValue);
@@ -611,11 +736,13 @@ function onInputCell(payload: { row: number; col: number; val: number }) {
   }
 }
 
-function numbersFromCandidates(candidates: Candidates): (1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9)[] {
+function numbersFromCandidates(
+  candidates: Candidates
+): (1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9)[] {
   const nums: (1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9)[] = [];
   for (let i = 1; i <= 9; i++) {
-    if (candidates[i as (1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9)]) {
-      nums.push(i as (1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9));
+    if (candidates[i as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9]) {
+      nums.push(i as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9);
     }
   }
   return nums;
@@ -627,8 +754,8 @@ function saveCurrentPuzzle() {
     alert("パズル名が入力されませんでした。保存をキャンセルします。");
     return;
   }
-  const boardData: SavedCellData[][] = board.value.map(row =>
-    row.map(cell => ({
+  const boardData: SavedCellData[][] = board.value.map((row) =>
+    row.map((cell) => ({
       value: cell.value,
       isGiven: cell.isGiven,
       userCandidates: numbersFromCandidates(cell.userCandidates),
@@ -664,11 +791,14 @@ function loadSavedPuzzles() {
 }
 
 function loadPuzzle(id: string) {
-  const puzzleToLoad = savedPuzzles.value.find(p => p.id === id);
+  const puzzleToLoad = savedPuzzles.value.find((p) => p.id === id);
   if (!puzzleToLoad) return;
   errorMessage.value = "";
 
-  const newGamePuzzle: SudokuValue[][] = Array.from({ length: 9 }, () => Array(9).fill(0) as SudokuValue[]);
+  const newGamePuzzle: SudokuValue[][] = Array.from(
+    { length: 9 },
+    () => Array(9).fill(0) as SudokuValue[]
+  );
   for (let r = 0; r < 9; r++) {
     for (let c = 0; c < 9; c++) {
       if (puzzleToLoad.boardData[r][c].isGiven) {
@@ -676,16 +806,16 @@ function loadPuzzle(id: string) {
       }
     }
   }
-  const savedTech = trainingPuzzles.find(t => t.name === puzzleToLoad.name);
-if (savedTech) {
-  // ② トレーニングパズルだった
-  currentTrainingTechnique.value = savedTech;
-  gameMode.value = 'training';
-} else {
-  // ③ 通常パズルだった
-  currentTrainingTechnique.value = null;
-  gameMode.value = 'normal';
-}
+  const savedTech = trainingPuzzles.find((t) => t.name === puzzleToLoad.name);
+  if (savedTech) {
+    // ② トレーニングパズルだった
+    currentTrainingTechnique.value = savedTech;
+    gameMode.value = "training";
+  } else {
+    // ③ 通常パズルだった
+    currentTrainingTechnique.value = null;
+    gameMode.value = "normal";
+  }
   highlightedCells.value = [];
 
   let newUseSudokuApi = useSudoku(newGamePuzzle);
@@ -694,20 +824,24 @@ if (savedTech) {
   toggleUserCandidate = newUseSudokuApi.toggleUserCandidate;
   resetBoard = newUseSudokuApi.resetBoard;
   updateAllCandidates = newUseSudokuApi.updateAllCandidates;
-  
+
   for (let r = 0; r < 9; r++) {
     for (let c = 0; c < 9; c++) {
       const savedCell = puzzleToLoad.boardData[r][c];
       const currentCell = board.value[r][c];
       if (savedCell.value !== 0 && !savedCell.isGiven) {
         board.value[r][c].value = savedCell.value as SudokuValue;
-      } else if (savedCell.value === 0 && currentCell.value !== 0 && !currentCell.isGiven) {
+      } else if (
+        savedCell.value === 0 &&
+        currentCell.value !== 0 &&
+        !currentCell.isGiven
+      ) {
         board.value[r][c].value = 0;
       }
       for (let i = 1; i <= 9; i++) {
         (currentCell.userCandidates as any)[i] = false;
       }
-      savedCell.userCandidates.forEach(candidate => {
+      savedCell.userCandidates.forEach((candidate) => {
         (currentCell.userCandidates as any)[candidate] = true;
       });
     }
@@ -721,9 +855,12 @@ if (savedTech) {
 
 function deletePuzzle(id: string) {
   if (confirm("本当にこのパズルを削除しますか？")) {
-    savedPuzzles.value = savedPuzzles.value.filter(p => p.id !== id);
+    savedPuzzles.value = savedPuzzles.value.filter((p) => p.id !== id);
     try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(savedPuzzles.value));
+      localStorage.setItem(
+        LOCAL_STORAGE_KEY,
+        JSON.stringify(savedPuzzles.value)
+      );
       alert("パズルを削除しました。");
     } catch (e) {
       console.error("Failed to delete puzzle from LocalStorage:", e);
@@ -779,14 +916,13 @@ function deletePuzzle(id: string) {
   color: #333; /* ボタンの文字色をデフォルトで黒っぽくする */
 }
 .init-buttons button:first-child {
-    background-color: #007acc;
-    color: white;
-    border-color: #007acc;
+  background-color: #007acc;
+  color: white;
+  border-color: #007acc;
 }
 .init-buttons button:first-child:hover {
-    background-color: #005a9c;
+  background-color: #005a9c;
 }
-
 
 .input-mode-buttons button.active,
 .difficulty-buttons button.active {
@@ -796,7 +932,7 @@ function deletePuzzle(id: string) {
 }
 
 .training-buttons {
-    margin-bottom: 12px;
+  margin-bottom: 12px;
 }
 
 .difficulty-buttons,
@@ -820,19 +956,29 @@ function deletePuzzle(id: string) {
   box-sizing: content-box;
 }
 
-.congrats, .error-msg {
+.congrats,
+.error-msg {
   margin: 12px 0;
   font-size: 1.2rem;
   font-weight: bold;
 }
-.congrats { color: green; }
-.error-msg { color: red; }
+.congrats {
+  color: green;
+}
+.error-msg {
+  color: red;
+}
 
 /* ★変更: .start-btn関連のスタイルを削除 */
 
-.hint-btn { background-color: #28a745; color: white; border: none; }
-.hint-btn:hover { background-color: #218838; }
-
+.hint-btn {
+  background-color: #28a745;
+  color: white;
+  border: none;
+}
+.hint-btn:hover {
+  background-color: #218838;
+}
 
 /* モーダル関連のスタイル */
 .modal-overlay {
@@ -890,8 +1036,8 @@ function deletePuzzle(id: string) {
   margin-bottom: 5px; /* レスポンシブ対応 */
 }
 .saved-puzzle-item div {
-    display: flex;
-    flex-shrink: 0; /* ボタンが縮まないように */
+  display: flex;
+  flex-shrink: 0; /* ボタンが縮まないように */
 }
 .saved-puzzle-item button {
   padding: 6px 10px;
@@ -902,8 +1048,12 @@ function deletePuzzle(id: string) {
   background-color: #007acc;
   color: white;
 }
-.saved-puzzle-item button.delete-btn { background-color: #dc3545; }
-.saved-puzzle-item button:hover { opacity: 0.8; }
+.saved-puzzle-item button.delete-btn {
+  background-color: #dc3545;
+}
+.saved-puzzle-item button:hover {
+  opacity: 0.8;
+}
 
 .close-modal-btn {
   display: block;
@@ -915,5 +1065,19 @@ function deletePuzzle(id: string) {
   border-radius: 4px;
   cursor: pointer;
 }
-.close-modal-btn:hover { background-color: #5a6268; }
+.close-modal-btn:hover {
+  background-color: #5a6268;
+}
+.training-banner {
+  background: #007acc;
+  color: white;
+  padding: 6px 12px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+  font-weight: bold;
+}
+.training-select select {
+  padding: 6px;
+  font-size: 1rem;
+}
 </style>
