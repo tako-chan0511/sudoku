@@ -36,7 +36,7 @@ const lockedCandidatesPuzzle: Board = [
   [0, 0, 0,   0, 0, 0,   0, 0, 0],
   [0, 0, 0,   0, 0, 0,   0, 0, 0],
   [0, 0, 0,   0, 0, 0,   0, 0, 0],
-  [0, 0, 0,   2, 3, 9,   0, 0, 0],  // ブロック内上部の givens
+  [0, 0, 0,   1, 3, 9,   0, 0, 0],  // ブロック内上部の givens
   [0, 0, 0,   0, 5, 0,   0, 0, 0],  // 中央セルのみ givens
   [0, 0, 0,   6, 7, 8,   0, 0, 0],  // ブロック内下部の givens
   [0, 0, 0,   0, 0, 0,   0, 0, 0],
@@ -80,7 +80,11 @@ export const trainingPuzzles: TrainingTechnique[] = [
       { row: 4, col: 3, type: 'primary' }, // row5,col4
       { row: 4, col: 5, type: 'primary' }, // row5,col6
       { row: 4, col: 0, type: 'secondary' }, // row5,col1
-      { row: 4, col: 6, type: 'secondary' }  // row5,col7
+      { row: 4, col: 1, type: 'secondary' }, // row5,col1
+      { row: 4, col: 2, type: 'secondary' }, // row5,col1
+      { row: 4, col: 6, type: 'secondary' }, // row5,col1
+      { row: 4, col: 7, type: 'secondary' },  // row5,col7
+      { row: 4, col: 8, type: 'secondary' }  // row5,col7
     ],
     removalCandidates: [2, 4]
   },

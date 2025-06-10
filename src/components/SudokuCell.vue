@@ -24,6 +24,7 @@
         :isEditable="inputMode === 'thinking' && !cell.isGiven && cell.value === 0"
         :cellInfo="cell"
         :is-training="isTraining"
+        :highlightType="highlightType"
         :hintRemovalApplied="hintRemovalApplied"
         :removalCandidates="removalCandidates"
         @toggleCandidate="onToggleCandidate"

@@ -26,6 +26,7 @@ const props = defineProps<{
   isTraining: boolean;
   hintRemovalApplied: boolean;
   removalCandidates: number[];
+  highlightType: string | null;
 }>();
 
 // Emit 定義
@@ -36,22 +37,22 @@ const emits = defineEmits<{
 
 // 候補表示用マップを computed で生成
 const displayCandidatesMap = computed(() => {
-  // 1) 通常モードはユーザー候補を表示
   if (!props.isTraining) {
     return props.userCandidates;
   }
-
-  // 2) トレーニング中、ヒント「削除フラグ」が立ったら
-  if (props.hintRemovalApplied && props.removalCandidates.length > 0) {
-    // autoCandidates をコピーして不要な候補だけ除外
+  // ヒント適用前は自動候補を表示
+  if (!props.hintRemovalApplied) {
+    return props.autoCandidates;
+  }
+  // Secondary ハイライトのセルだけ autoCandidates から除外
+  if (props.highlightType === 'secondary') {
     const filtered: Candidates = { ...props.autoCandidates };
     props.removalCandidates.forEach(n => {
       filtered[n] = false;
     });
     return filtered;
   }
-
-  // 3) それ以外（ヒント前・primaryセルなど）は autoCandidates
+  // primary セルや他のセルはそのまま autoCandidates
   return props.autoCandidates;
 });
 
