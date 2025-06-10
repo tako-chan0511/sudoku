@@ -47,13 +47,13 @@ const lockedCandidatesPuzzle: Board = [
 // --- ネイキッドペア (Naked Pair) ---
 // 左上ブロック内の (0,0),(0,1) が候補 {2,3} となる強引なサンプル
 const nakedPairPuzzle: Board = [
-  [0, 0, 1,   5, 4, 0,   0, 0, 0],  // (0,2)=1 以外は空欄
-  [0, 0, 6,   0, 0, 0,   0, 0, 0],  // (1,0)=4,(1,1)=5,(1,2)=6
-  [7, 8, 9,   0, 0, 0,   0, 0, 0],  // (2,0)=7,(2,1)=8,(2,2)=9
-  [4, 5, 0,   0, 0, 0,   0, 0, 0],  // 他行は空欄
+  [0, 4, 0,   8, 0, 0,   0, 0, 0],  // (0,2)=1 以外は空欄
+  [0, 5, 9,   0, 0, 0,   4, 0, 0],  // (1,0)=4,(1,1)=5,(1,2)=6
+  [1, 6, 0,   7, 0, 0,   0, 0, 0],  // (2,0)=7,(2,1)=8,(2,2)=9
+  [7, 0, 8,   0, 0, 0,   0, 0, 0],  // 他行は空欄
   [0, 0, 0,   0, 0, 0,   0, 0, 0],
   [0, 0, 0,   0, 0, 0,   0, 0, 0],
-  [0, 0, 0,   0, 0, 0,   0, 0, 0],
+  [5, 0, 0,   0, 0, 0,   0, 0, 0],
   [0, 0, 0,   0, 0, 0,   0, 0, 0],
   [0, 0, 0,   0, 0, 0,   0, 0, 0]
 ];
@@ -91,18 +91,107 @@ export const trainingPuzzles: TrainingTechnique[] = [
   {
     key: 'naked-pair',
     name: 'ネイキッドペア (Naked Pair)',
-    description: 'この例では、左上ブロック内のセル (0,0) と (0,1) が候補 {2, 3} のペアになっています。したがって、同じブロック内の他のセル と同じ行の他のセルから候補 2 と 3 を削除できます。手動でこれらの候補を消してみましょう。',
+    description: 'この例では、左上ブロック内のセル (0,0) と (2,2) が候補 {2, 3} のペアになっています。したがって、同じブロック内の他のセルから候補 2 と 3 を削除できます。今回の対象は（１，０）（０，２）になります。',
     puzzle: nakedPairPuzzle,
     highlight: [
       { row: 0, col: 0, type: 'primary' },
-      { row: 0, col: 1, type: 'primary' },
-      { row: 0, col: 5, type: 'secondary' },
-      { row: 0, col: 6, type: 'secondary' },
-      { row: 0, col: 7, type: 'secondary' },
-      { row: 0, col: 8, type: 'secondary' },
+      { row: 2, col: 2, type: 'primary' },
       { row: 1, col: 0, type: 'secondary' },
-      { row: 1, col: 1, type: 'secondary' },
+      { row: 0, col: 2, type: 'secondary' },
     ],
     removalCandidates: [2, 3]
-  }
-];
+  },
+
+// --- 指向ペア (Pointing Pair) ---
+{
+  key: 'pointing-pair',
+  name: '指向ペア (Pointing Pair)',
+  description: [
+    'あるブロック内で特定の候補数字が二つのセルだけにあり、',
+    'さらにそれらが同じ行に揃っているとき、',
+    'その行の他のブロックのセルからはその候補数字を消去できます。',
+    'この例では「3」が中央上のブロック（行1–3, 列4–6）内の',
+    '(1,4) と (1,5) にしか残っていません。',
+    '行2（0-based index=1）の他のブロックにあるセル (1,1) と (1,8) から「3」を削除してみましょう。'
+  ].join(''),
+  puzzle: [
+    // rows 0–2: 中央部分に givens、他は空欄
+    [0, 0, 0,   5, 1, 6,   0, 0, 0],  // row0
+    [0, 0, 0,   0, 0, 8,   0, 0, 0],  // row1: (1,4),(1,5) が空欄
+    [0, 0, 0,   9, 7, 4,   0, 0, 0],  // row2
+    // rows 3–8: 全空欄
+    [0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0],
+  ],
+  highlight: [
+    // primary: ブロック内で 3 の候補が残るセル
+    { row: 1, col: 3, type: 'primary' },
+    { row: 1, col: 4, type: 'primary' },
+    // secondary: 同じ行2の他ブロックで 3 を消す対象
+    { row: 1, col: 0, type: 'secondary' },
+    { row: 1, col: 1, type: 'secondary' },
+    { row: 1, col: 2, type: 'secondary' },
+    { row: 1, col: 6, type: 'secondary' },
+    { row: 1, col: 7, type: 'secondary' },
+    { row: 1, col: 8, type: 'secondary' },  
+  ],
+  removalCandidates: [2,3]
+},
+
+// --- X-Wing ---
+// 行2と行5のそれぞれ cols 1 & 7 にだけ候補「4」が残る例
+{
+  key: 'x-wing',
+  name: 'X-Wing',
+  description: [
+    '同じ候補数字がちょうど二つの行で、',
+    'それぞれ同じ二つの列にのみ残っているとき、',
+    'その二つの列の他の行からはその候補数字を消去できます。',
+    'この例では候補「4」が行2の (1,1),(1,7) と行5の (4,1),(4,7) にのみ残っています。',
+    '列2 (0-based col=1) と列8 (col=7) の他の行から「4」を削除してみましょう。'
+  ].join(''),
+  puzzle: [
+    // row0 empty
+    [0,0,0,0,0,0,0,0,0],
+    // row1: (1,1),(1,7) は空欄、他は givens
+    [3, 0, 5, 6, 7, 8, 9, 0, 1],
+    // row2 empty
+    [0,0,0,0,0,0,0,0,0],
+    // row3–4 empty
+    [0,0,0,0,0,0,0,0,0],
+    // row4: (4,1),(4,7) は空欄、他は givens
+    [2, 0, 6, 7, 8, 9, 1, 0, 3],
+    // rows 5–8 empty
+    [0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0],
+  ],
+  highlight: [
+    // primary：X の頂点
+    { row: 1, col: 1, type: 'primary' },
+    { row: 1, col: 7, type: 'primary' },
+    { row: 4, col: 1, type: 'primary' },
+    { row: 4, col: 7, type: 'primary' },
+    // secondary：削除対象
+    { row: 0, col: 1, type: 'secondary' },
+    { row: 2, col: 1, type: 'secondary' },
+    { row: 3, col: 1, type: 'secondary' },
+    { row: 5, col: 1, type: 'secondary' },
+    { row: 6, col: 1, type: 'secondary' },
+    { row: 7, col: 1, type: 'secondary' },
+    { row: 8, col: 1, type: 'secondary' },
+    { row: 0, col: 7, type: 'secondary' },
+    { row: 2, col: 7, type: 'secondary' },
+    { row: 3, col: 7, type: 'secondary' },
+    { row: 5, col: 7, type: 'secondary' },
+    { row: 6, col: 7, type: 'secondary' },
+    { row: 7, col: 7, type: 'secondary' },
+    { row: 8, col: 7, type: 'secondary' }
+  ],
+  removalCandidates: [4]
+}];

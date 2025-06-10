@@ -109,14 +109,27 @@
     </div>
 
     <!-- テクニック解説モーダル -->
-    <div v-if="showTechniqueModal" class="modal-overlay" @click.self="showTechniqueModal = false">
-        <div class="modal-content">
-            <h2>{{ currentTrainingTechnique?.name }}</h2>
-            <p>{{ currentTrainingTechnique?.description }}</p>
-            <button @click="showTechniqueModal = false" class="close-modal-btn">閉じる</button>
-        </div>
-    </div>
-  </div>
+     <div
+   v-if="showTechniqueModal"
+   class="modal-overlay"
+   @click.self="showTechniqueModal = false"
+ >
+   <div
+     class="modal-content"
+     :style="{
+       position: 'absolute',
+       top: modalPosition.y + 'px',
+       left: modalPosition.x + 'px'
+     }"
+     @mousedown.prevent="onModalMouseDown"
+   >
+        <h2>{{ currentTrainingTechnique?.name }}</h2>
+        <p>{{ currentTrainingTechnique?.description }}</p>
+        <button @click="showTechniqueModal = false" class="close-modal-btn">閉じる</button>
+   </div>
+ </div>
+   </div>
+ 
 </template>
 
 <script lang="ts" setup>
@@ -129,7 +142,42 @@ import { makePuzzleByDifficulty } from "@/utils/puzzleGenerator";
 // トレーニング用のデータをインポート
 import { trainingPuzzles, type TrainingTechnique } from "@/utils/trainingPuzzles";
 import { nextTick, onMounted } from "vue";
-import { watch } from 'vue';
+import { watch , onBeforeUnmount} from 'vue';
+
+// モーダル位置
+const modalPosition = ref({ x: 0, y: 0 });
+// ドラッグ中フラグ
+const isDragging = ref(false);
+// ドラッグ開始時のオフセット
+let dragOffset = { x: 0, y: 0 };
+
+// モーダルヘッダを押したとき
+function onModalMouseDown(event: MouseEvent) {
+  isDragging.value = true;
+  dragOffset.x = event.clientX - modalPosition.value.x;
+  dragOffset.y = event.clientY - modalPosition.value.y;
+}
+
+// マウス移動時
+function onMouseMove(event: MouseEvent) {
+  if (!isDragging.value) return;
+  modalPosition.value.x = event.clientX - dragOffset.x;
+  modalPosition.value.y = event.clientY - dragOffset.y;
+}
+
+// マウスを離したとき
+function onMouseUp() {
+  isDragging.value = false;
+}
+
+onMounted(() => {
+  window.addEventListener('mousemove', onMouseMove);
+  window.addEventListener('mouseup', onMouseUp);
+});
+onBeforeUnmount(() => {
+  window.removeEventListener('mousemove', onMouseMove);
+  window.removeEventListener('mouseup', onMouseUp);
+});
 
 /**
  * CandidateGrid.vue から emit された toggleCandidate を
