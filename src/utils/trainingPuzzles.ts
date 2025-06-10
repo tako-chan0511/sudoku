@@ -57,7 +57,45 @@ const nakedPairPuzzle: Board = [
   [0, 0, 0,   0, 0, 0,   0, 0, 0],
   [0, 0, 0,   0, 0, 0,   0, 0, 0]
 ];
+// --- ネイキッドトリプル (Naked Triple) ---
+const nakedTriplePuzzle: Board = [
+  [0, 0, 0, 3,4,6,7,8,9], // (0,0)-(0,2) が候補 {1,2,5}
+  [0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0]
+];
 
+// --- ユニーク矩形 (Unique Rectangle) ---
+const uniqueRectanglePuzzle: Board = [
+ // rows 0–2
+  [3, 4, 0,   0, 7, 6,   9, 5, 8],  // (0,2),(0,3) empty corners of rectangle
+  [5, 6, 0,   0, 0, 8,   7, 0, 0],  // (1,2),(1,3) empty corners
+  [7, 8, 9,   5, 4, 3,   0, 0, 0],  // filled to eliminate other candidates
+  [0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0]
+];
+
+// --- バックトラッキング (Guess & Check) ---
+const backtrackingPuzzle: Board = [
+  [1,2,3,4,5,6,7,8,9],
+  [4,5,6,7,8,9,1,2,3],
+  [7,8,9,1,2,3,4,5,6],
+  [2,3,4,5,6,7,8,9,1],
+  [5,6,7,8,0,1,2,3,4],
+  [8,9,1,2,3,4,5,6,7],
+  [3,4,5,6,7,8,9,1,2],
+  [6,7,8,9,1,2,3,4,5],
+  [9,1,2,3,4,5,6,7,8] 
+];
 export const trainingPuzzles: TrainingTechnique[] = [
   {
     key: 'hidden-single',
@@ -194,4 +232,51 @@ export const trainingPuzzles: TrainingTechnique[] = [
     { row: 8, col: 7, type: 'secondary' }
   ],
   removalCandidates: [4]
-}];
+},
+
+
+  // ... existing entries for locked-candidates, naked-pair, pointing-pair, x-wing ...
+  {
+    key: 'naked-triple',
+    name: 'ネイキッドトリプル (Naked Triple)',
+    description: 'ある行で3つのセルだけが候補 {1,2,5} を含んでいる場合、他のセルから 1,2,5 を消去できます。ここでは行1 の (0,0),(0,1),(0,2) が {1,2,5} のトリプルとなっています。',
+    puzzle: nakedTriplePuzzle,
+    highlight: [
+      { row:0, col:0, type:'primary' },
+      { row:0, col:1, type:'primary' },
+      { row:0, col:2, type:'primary' },
+      { row:1, col:0, type:'secondary' },
+      { row:1, col:1, type:'secondary' },
+      { row:1, col:2, type:'secondary' },
+      { row:2, col:0, type:'secondary' },
+      { row:2, col:1, type:'secondary' },
+      { row:2, col:2, type:'secondary' }
+    ],
+    removalCandidates: [1,2,5]
+  },
+  {
+  key: 'unique-rectangle',
+    name: 'ユニーク矩形 (Unique Rectangle)',
+    description: 'この例では、 (0,2),(1,2),(0,3),(1,3) の4セルが候補 {1,2} のユニーク矩形を形成しています。これを維持するため、(1,3)の中の９は削除される。もちろんそのあとに(1,4)は１，２が排除され９に確定することになります。',
+    puzzle: uniqueRectanglePuzzle,
+    highlight: [
+      // ユニーク矩形の4セル
+      { row: 0, col: 2, type: 'primary' },
+      { row: 1, col: 2, type: 'primary' },
+      { row: 0, col: 3, type: 'primary' },
+      // 削除対象セル (secondary)
+      { row: 1, col: 3, type: 'secondary' },
+     
+        ],
+    removalCandidates: [9]
+  },
+  {
+    key: 'backtracking',
+    name: 'バックトラッキング (Guess & Check)',
+    description: '論理的に進まない場合、セル (4,4) の {2,3} のどちらかを仮置きして進めます。仮置き後に矛盾が出たら、もう一方の数字を試しましょう。',
+    puzzle: backtrackingPuzzle,
+    highlight: [ { row:4, col:4, type:'primary' } ],
+    removalCandidates: []
+  }
+
+];
