@@ -24,6 +24,8 @@
         :isEditable="inputMode === 'thinking' && !cell.isGiven && cell.value === 0"
         :cellInfo="cell"
         :is-training="isTraining"
+        :hintRemovalApplied="hintRemovalApplied"
+        :removalCandidates="removalCandidates"
         @toggleCandidate="onToggleCandidate"
       />
     </div>
@@ -43,6 +45,8 @@ const props = defineProps<{
   isRelated: boolean;
   highlightType: string | null;
   isTraining: boolean;
+  hintRemovalApplied: boolean;
+  removalCandidates: (1|2|3|4|5|6|7|8|9)[];
 }>();
 
 const emits = defineEmits<{
@@ -51,11 +55,10 @@ const emits = defineEmits<{
   (e: 'toggleCandidate', payload: { row: number; col: number; candidate: number }): void;
 }>();
 
-// ★★★ デバッグ用のログを追加 ★★★
-// highlightTypeプロパティが変更されたときにコンソールにログを出力します
+// Debug log for highlight changes
 watch(() => props.highlightType, (newVal) => {
   if (newVal) {
-    console.log(`[SudokuCell] (${props.cell.row}, ${props.cell.col}) のハイライトが [${newVal}] になりました。`);
+    console.log(`[SudokuCell] (${props.cell.row}, ${props.cell.col}) highlight changed to [${newVal}]`);
   }
 });
 
@@ -99,10 +102,10 @@ function onToggleCandidate(candidate: number) {
   background-color: #e0f2f7;
 }
 .sudoku-cell.highlight-secondary {
-    background-color: rgba(173, 216, 230, 0.7) !important; /* 水色 (ヒントの補助) */
+  background-color: rgba(173, 216, 230, 0.7) !important;
 }
 .sudoku-cell.highlight-primary {
-    background-color: rgba(255, 255, 0, 0.7) !important; /* 黄色 (ヒントのメイン) */
+  background-color: rgba(255, 255, 0, 0.7) !important;
 }
 .sudoku-cell.is-selected {
   border: 2px solid #007ACC !important;
@@ -123,8 +126,10 @@ function onToggleCandidate(candidate: number) {
 }
 .value-display-wrapper {
   position: absolute;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -138,8 +143,10 @@ function onToggleCandidate(candidate: number) {
 }
 .candidate-display-area {
   position: absolute;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   z-index: 1;
 }
 </style>

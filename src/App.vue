@@ -131,6 +131,13 @@ import { trainingPuzzles, type TrainingTechnique } from "@/utils/trainingPuzzles
 import { nextTick, onMounted } from "vue";
 import { watch } from 'vue';
 
+/**
+ * CandidateGrid.vue から emit された toggleCandidate を
+ * useSudoku の toggleUserCandidate に渡すラッパー
+ */
+function onToggleCandidate(payload: { row: number; col: number; candidate: 1|2|3|4|5|6|7|8|9 }) {
+  toggleUserCandidate(payload.row, payload.col, payload.candidate);
+}
 // UUID生成のための簡易関数
 function generateUUID(): string {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -141,7 +148,7 @@ function generateUUID(): string {
 }
 
 // 型
-type Difficulty = "easy" | "medium" | "hard" | "training"; // trainingを追加
+type Difficulty = "easy" | "medium" | "hard" ; // trainingを追加
 type SudokuValue = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 type InputMode = "confirm" | "thinking";
 
@@ -621,14 +628,16 @@ function loadPuzzle(id: string) {
       }
     }
   }
-  gameMode.value = puzzleToLoad.difficulty === 'training' ? 'training' : 'normal';
-  if (gameMode.value === 'training') {
-    // Note: This logic assumes the saved puzzle name matches a technique name.
-    // A more robust solution might store the technique key in the saved data.
-    currentTrainingTechnique.value = trainingPuzzles.find(t => t.name === puzzleToLoad.name) || null;
-  } else {
-    currentTrainingTechnique.value = null;
-  }
+  const savedTech = trainingPuzzles.find(t => t.name === puzzleToLoad.name);
+if (savedTech) {
+  // ② トレーニングパズルだった
+  currentTrainingTechnique.value = savedTech;
+  gameMode.value = 'training';
+} else {
+  // ③ 通常パズルだった
+  currentTrainingTechnique.value = null;
+  gameMode.value = 'normal';
+}
   highlightedCells.value = [];
 
   let newUseSudokuApi = useSudoku(newGamePuzzle);

@@ -22,7 +22,7 @@ const props = defineProps<{
   autoCandidates: Candidates;
   userCandidates: Candidates;
   isEditable: boolean;
-  cellInfo: Cell & { highlightType: string | null };
+  cellInfo: Cell ;
   isTraining: boolean;
   hintRemovalApplied: boolean;
   removalCandidates: number[];
