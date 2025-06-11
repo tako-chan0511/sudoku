@@ -11,8 +11,10 @@
         'highlight-secondary': highlightType === 'secondary'
       }
     ]"
-    @pointerdown.prevent="handleMainCellClick"
+    @click="handleMainCellClick"
     @touchstart.prevent="handleMainCellClick"
+    @pointerdown.prevent="handleMainCellClick"
+       
   >
     <div v-if="cell.value !== 0" class="value-display-wrapper">
       <span class="value-display">{{ cell.value }}</span>
@@ -99,10 +101,9 @@ function onToggleCandidate(candidate: number) {
   cursor: pointer;
   user-select: none;
   transition: background-color 0.2s ease-in-out;
-  /* 既存のスタイルの下に追加 */
-  touch-action: none;      /* スクロールやズームを抑制 */
-  -webkit-user-select: none;
-  -ms-touch-action: none;
+ /* 既存スタイルの下に追加 */
+  touch-action: manipulation;      /* タップを即座に処理、スクロールの競合を避ける */
+  -webkit-tap-highlight-color: transparent; /* タップハイライト無効 */
 }
 .sudoku-cell.is-related {
   background-color: #e0f2f7;

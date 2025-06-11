@@ -324,13 +324,13 @@ const savedPuzzles = ref<SavedPuzzle[]>([]);
 const LOCAL_STORAGE_KEY = "sudokuSavedPuzzles";
 
 // --- ライフサイクル ---
-onMounted(() => {
-  // const appElement = document.getElementById("app");
-  // if (appElement) {
-  //   appElement.focus();
-  // }
-  loadSavedPuzzles();
-});
+// onMounted(() => {
+//   // const appElement = document.getElementById("app");
+//   // if (appElement) {
+//   //   appElement.focus();
+//   // }
+//   loadSavedPuzzles();
+// });
 
 // --- Computed ---
 const sortedSavedPuzzles = computed(() => {
