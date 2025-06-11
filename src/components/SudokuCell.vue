@@ -11,10 +11,7 @@
         'highlight-secondary': highlightType === 'secondary'
       }
     ]"
-    @click="handleMainCellClick"
-    @touchstart.prevent="handleMainCellClick"
-    @pointerdown.prevent="handleMainCellClick"
-       
+   @pointerup.prevent.stop="handleMainCellClick"       
   >
     <div v-if="cell.value !== 0" class="value-display-wrapper">
       <span class="value-display">{{ cell.value }}</span>

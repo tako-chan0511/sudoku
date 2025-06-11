@@ -608,7 +608,7 @@ function startGame() {
     selectedCell.value = flatCells.value.length > 0 ? flatCells.value[0] : null;
     const appElement = document.getElementById("app");
     if (appElement) {
-      appElement.focus();
+      // appElement.focus();
     }
   });
 }
@@ -634,7 +634,7 @@ function clearPuzzle() {
     selectedCell.value = flatCells.value.length > 0 ? flatCells.value[0] : null;
     const appElement = document.getElementById("app");
     if (appElement) {
-      appElement.focus();
+      // appElement.focus();
     }
   });
 }
@@ -655,7 +655,7 @@ function resetAll() {
     selectedCell.value = flatCells.value.length > 0 ? flatCells.value[0] : null;
     const appElement = document.getElementById("app");
     if (appElement) {
-      appElement.focus();
+      // appElement.focus();
     }
   });
 }
@@ -954,6 +954,10 @@ function deletePuzzle(id: string) {
   border: 2px solid #007acc;
   margin: 16px auto; /* 上下のマージンを調整 */
   box-sizing: content-box;
+  touch-action: none;      /* スワイプやピンチを無効化 */
+  -webkit-touch-callout: none;  /* 長押しメニューを無効化 */
+  -ms-touch-action: none;
+  user-select: none;
 }
 
 .congrats,
