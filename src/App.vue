@@ -325,10 +325,10 @@ const LOCAL_STORAGE_KEY = "sudokuSavedPuzzles";
 
 // --- ライフサイクル ---
 onMounted(() => {
-  const appElement = document.getElementById("app");
-  if (appElement) {
-    appElement.focus();
-  }
+  // const appElement = document.getElementById("app");
+  // if (appElement) {
+  //   appElement.focus();
+  // }
   loadSavedPuzzles();
 });
 

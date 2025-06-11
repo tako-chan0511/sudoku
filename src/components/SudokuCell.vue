@@ -99,6 +99,10 @@ function onToggleCandidate(candidate: number) {
   cursor: pointer;
   user-select: none;
   transition: background-color 0.2s ease-in-out;
+  /* 既存のスタイルの下に追加 */
+  touch-action: none;      /* スクロールやズームを抑制 */
+  -webkit-user-select: none;
+  -ms-touch-action: none;
 }
 .sudoku-cell.is-related {
   background-color: #e0f2f7;
