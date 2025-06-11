@@ -1,5 +1,10 @@
 <template>
-  <div id="app" @keydown="handleKeyDown" tabindex="0">
+  <div
+    id="app"
+    tabindex="0"
+    @keydown.space.prevent.stop="toggleInputMode"
+    @keydown="handleKeyDown"
+  >
     <h1>数独 (Sudoku)</h1>
 
     <!-- モード選択 -->
@@ -292,6 +297,17 @@ const showTechniqueModal = ref(false);
 const currentTrainingTechnique = ref<TrainingTechnique | null>(null);
 const highlightedCells = ref<{ row: number; col: number; type: string }[]>([]);
 
+// 既にある selectedCell 定義のすぐ下あたりに追加
+watch(selectedCell, (cell) => {
+  if (!cell) return;
+  // Vue がレンダリングを終えた次のtickで focus
+  nextTick(() => {
+    const el = document.getElementById(`cell-${cell.row}-${cell.col}`);
+    if (el) el.focus();
+  });
+});
+
+
 // gameMode が変わったらトレーニング専用ステートだけ切り替え
 watch(gameMode, (mode) => {
   if (mode === "normal") {
@@ -370,7 +386,7 @@ const allCorrect = computed(() => {
 const trainingBanner = ref<string | null>(null);
 function startTraining(technique: TrainingTechnique) {
   // ① いったん空盤面にクリア
-  clearPuzzle();  
+  clearPuzzle();
   console.log(`[App.vue] Starting training for: ${technique.name}`);
   errorMessage.value = "";
   // ② トレーニング状態設定
@@ -404,7 +420,6 @@ function startTraining(technique: TrainingTechnique) {
 
   gameMode.value = "training";
   trainingBanner.value = `🎓 トレーニングモード：${technique.name}`;
-   
 }
 
 // トレーニングモードのテクニック選択用のキー
@@ -604,12 +619,12 @@ function startGame() {
   updateAllCandidates = api.updateAllCandidates;
   updateAllCandidates();
   selectedNumber.value = 0;
+  selectedCell.value = flatCells.value[0];
   nextTick(() => {
     selectedCell.value = flatCells.value.length > 0 ? flatCells.value[0] : null;
-    const appElement = document.getElementById("app");
-    if (appElement) {
-      // appElement.focus();
-    }
+    // ② 盤面コンテナにフォーカスを戻す
+    const app = document.getElementById("app");
+    if (app) app.focus();
   });
 }
 
@@ -632,10 +647,9 @@ function clearPuzzle() {
   selectedNumber.value = 0;
   nextTick(() => {
     selectedCell.value = flatCells.value.length > 0 ? flatCells.value[0] : null;
-    const appElement = document.getElementById("app");
-    if (appElement) {
-      // appElement.focus();
-    }
+    // ② 盤面コンテナにフォーカスを戻す
+    const app = document.getElementById("app");
+    if (app) app.focus();
   });
 }
 
@@ -653,10 +667,9 @@ function resetAll() {
   selectedNumber.value = 0;
   nextTick(() => {
     selectedCell.value = flatCells.value.length > 0 ? flatCells.value[0] : null;
-    const appElement = document.getElementById("app");
-    if (appElement) {
-      // appElement.focus();
-    }
+    // ② 盤面コンテナにフォーカスを戻す
+    const app = document.getElementById("app");
+    if (app) app.focus();
   });
 }
 
@@ -954,8 +967,8 @@ function deletePuzzle(id: string) {
   border: 2px solid #007acc;
   margin: 16px auto; /* 上下のマージンを調整 */
   box-sizing: content-box;
-  touch-action: none;      /* スワイプやピンチを無効化 */
-  -webkit-touch-callout: none;  /* 長押しメニューを無効化 */
+  touch-action: none; /* スワイプやピンチを無効化 */
+  -webkit-touch-callout: none; /* 長押しメニューを無効化 */
   -ms-touch-action: none;
   user-select: none;
 }
