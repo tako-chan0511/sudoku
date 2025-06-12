@@ -301,16 +301,28 @@ function onMouseUp() {
 
 // Sudoku Logic
 function handleToggleCandidate(payload: { row: number; col: number; candidate: CandidateNumber }) {
-  // １．候補入力モードであること
+  // 1. 候補入力モードでないなら無視
   if (inputMode.value !== "thinking") return;
-  // ２．必ずセルが選択されていること
-  if (!selectedCell.value) return;
-  // ３．選択中のセルと同じマスであること
-  if (selectedCell.value.row !== payload.row || selectedCell.value.col !== payload.col) return;
-  // 上記３つを満たした場合のみ、候補トグル
+
+  // 2. セルが選択されていない or 別のセルなら「選択するだけ」
+  if (
+    !selectedCell.value ||
+    selectedCell.value.row !== payload.row ||
+    selectedCell.value.col !== payload.col
+  ) {
+    // 単なる座標ではなく、flatCells から該当 Cell オブジェクトを取得してセット
+    const cell = flatCells.value.find(
+      (c) => c.row === payload.row && c.col === payload.col
+    );
+    if (cell) {
+      selectedCell.value = cell;
+    }
+    return;
+  }
+
+  // 3. ここまで来たら「選択済みセルと同じ」なのでトグル実行
   toggleUserCandidate(payload.row, payload.col, payload.candidate);
 }
-
 // ★★★ 修正点②：トレーニングモードへの移行処理 ★★★
 function setTrainingMode() {
   gameMode.value = 'training';
