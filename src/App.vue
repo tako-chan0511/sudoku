@@ -609,47 +609,94 @@ function onSelectCellFromBoard(cell: Cell) {
 }
 
 function isConflict(row: number, col: number, val: number): boolean {
+  // デバッグログ：行・列・ブロックの現在値を出力
+  console.log(
+    `isConflict check row=${row}, col=${col}, val=${val}`,
+    'rowValues=', board.value[row].map(c => c.value),
+    'colValues=', board.value.map(r => r[col].value),
+    'blockValues=',
+    (() => {
+      const vals: number[] = [];
+      const br = Math.floor(row / 3) * 3;
+      const bc = Math.floor(col / 3) * 3;
+      for (let i = br; i < br + 3; i++) {
+        for (let j = bc; j < bc + 3; j++) {
+          vals.push(board.value[i][j].value);
+        }
+      }
+      return vals;
+    })()
+  );
+
+  // 行チェック（同じ行に同じ値がないか）
   for (let c = 0; c < 9; c++) {
-    if (c !== col && board.value[row][c].value === val) return true;
+    if (c !== col && board.value[row][c].value === val) {
+      return true;
+    }
   }
+
+  // 列チェック（同じ列に同じ値がないか）
   for (let r = 0; r < 9; r++) {
-    if (r !== row && board.value[r][col].value === val) return true;
+    if (r !== row && board.value[r][col].value === val) {
+      return true;
+    }
   }
-  const br = Math.floor(row / 3) * 3,
-    bc = Math.floor(col / 3) * 3;
-  for (let r_block = br; r_block < br * 3 + 3; r_block++) {
-    for (let c_block = bc; c_block < bc * 3 + 3; c_block++) {
-      if (
-        !(r_block === row && c_block === col) &&
-        board.value[r_block][c_block].value === val
-      ) {
+
+  // 3x3 ブロックチェック
+  const br = Math.floor(row / 3) * 3;
+  const bc = Math.floor(col / 3) * 3;
+  for (let r_block = br; r_block < br + 3; r_block++) {
+    for (let c_block = bc; c_block < bc + 3; c_block++) {
+      // 自身のマスは除外
+      if ((r_block !== row || c_block !== col) &&
+          board.value[r_block][c_block].value === val) {
         return true;
       }
     }
   }
+
+  // 重複なし
   return false;
 }
 
-function onInputCell(payload: { row: number; col: number; val: number }) {
-  const { row, col, val } = payload;
+
+function onInputCell(
+  { row, col, val }: { row: number; col: number; val: number }
+) {
+  // デバッグログ
+  console.log(
+    `onInputCell called row=${row}, col=${col}, val=${val}, ` +
+    `selected=(${selectedCell.value?.row},${selectedCell.value?.col}), ` +
+    `mode=${inputMode.value}`
+  );
+
+  // 選択なし or 固定セルは処理しない
   if (!selectedCell.value || selectedCell.value.isGiven) return;
+
+  // メッセージクリア
   errorMessage.value = "";
+
+  // ０（クリア）ならそのまま
   if (val === 0) {
     setCellValue(row, col, 0);
     return;
   }
+
+  // 通常モード（confirm）の値確定
   if (inputMode.value === "confirm") {
+    // 重複チェック
     if (isConflict(row, col, val)) {
-      errorMessage.value = `重複: (${row + 1},${
-        col + 1
-      }) に ${val} は置けません`;
+      errorMessage.value = `重複: (${row + 1},${col + 1}) に ${val} は置けません`;
       return;
     }
     setCellValue(row, col, val as SudokuValue);
+
+  // 候補入力モード（thinking）
   } else {
     toggleUserCandidate(row, col, val as CandidateNumber);
   }
 }
+
 
 function generateUUID(): string {
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
