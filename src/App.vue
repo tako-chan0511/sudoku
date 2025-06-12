@@ -1,25 +1,8 @@
-大変申し訳ありません。私の度重なる修正ミスにより、貴重なお時間を無駄にしてしまい、開発を進めるどころか、新たな問題まで発生させてしまいました。ご不満はごもっともです。すべて私の分析と確認不足が原因です。心からお詫び申し上げます。
-
-おっしゃる通り、これ以上の試行錯誤は許されません。お送りいただいた**1100行の`App.vue`の完全なコードを絶対的な正**とし、ご指摘の2つの問題点のみを修正し、他の正常に動作している機能（盤面保存履歴など）には一切影響を与えない形で、**完全なコードを1つのブロックで返却いたします。**
-
----
-### 修正点の概要
-
-ご指摘いただいた2つの問題を解決するため、以下の2点のみを修正しました。
-
-1.  **候補入力モードの切替問題:** スペースキーを押した際に、どのボタンが選択されていても、常に「候補入力モード」のオン/オフが切り替わるように、キーボードイベントの処理を修正しました。
-2.  **トレーニングモードの表示残り問題:** 「トレーニング」モードのボタンが押された際に、前回のテクニック名（バナー）などの古い情報がクリアされるように、状態をリセットする処理を追加しました。
-
----
-### `App.vue` (最終確定・完全版)
-
-以下のコードで、お手元の`App.vue`ファイルの中身を**一行目から最後まで、完全に置き換えて**ください。
-
-```html
 <template>
   <div id="app" @keydown="handleKeyDown" tabindex="0">
     <h1>数独 (Sudoku)</h1>
 
+    <!-- モード選択 -->
     <div class="mode-selector">
       <button
         :class="{ active: gameMode === 'normal' }"
@@ -35,6 +18,7 @@
       </button>
     </div>
 
+    <!-- 通常モード用の難易度選択 -->
     <div v-if="gameMode === 'normal'" class="difficulty-buttons">
       <button
         :class="{ active: currentDifficulty === 'easy' }"
@@ -56,6 +40,7 @@
       </button>
     </div>
 
+    <!-- トレーニングモード用のテクニック選択 -->
     <div v-if="gameMode === 'training'" class="training-select">
       <div v-if="trainingBanner" class="training-banner">
         {{ trainingBanner }}
@@ -86,7 +71,7 @@
 
       <button
         v-if="gameMode === 'normal'"
-        @click="clearPuzzle"
+        @click="() => clearPuzzle()"
         style="margin-left: 8px"
       >
         空盤面
@@ -149,6 +134,7 @@
       />
     </div>
 
+    <!-- 保存されたパズルのモーダル -->
     <div
       v-if="showSavedPuzzles"
       class="modal-overlay"
@@ -182,6 +168,7 @@
       </div>
     </div>
 
+    <!-- テクニック解説モーダル -->
     <div
       v-if="showTechniqueModal"
       class="modal-overlay"
@@ -214,45 +201,76 @@ import type {
   SavedCellData,
   Candidates,
   Board,
+  SudokuValue,
+  CandidateNumber
 } from "@/types/sudoku";
 import { useSudoku } from "@/composables/useSudoku";
 import SudokuCell from "@/components/SudokuCell.vue";
 import NumberPicker from "@/components/NumberPicker.vue";
 import { makePuzzleByDifficulty } from "@/utils/puzzleGenerator";
-// トレーニング用のデータをインポート
-import {
-  trainingPuzzles,
-  type TrainingTechnique,
-} from "@/utils/trainingPuzzles";
-import { nextTick, onMounted } from "vue";
-import { watch, onBeforeUnmount } from "vue";
+import { trainingPuzzles, type TrainingTechnique } from "@/utils/trainingPuzzles";
+import { nextTick, onMounted, onBeforeUnmount, watch } from "vue";
 
-// モーダル位置
+// --- Type Definitions ---
+type Difficulty = "easy" | "medium" | "hard";
+
+// --- State & Refs ---
+const inputMode = ref<"confirm" | "thinking">("confirm");
+const selectedNumber = ref(0);
+const currentDifficulty = ref<Difficulty>("easy");
+const errorMessage = ref("");
+const selectedCell = ref<Cell | null>(null);
+const showSavedPuzzles = ref(false);
+const gameMode = ref<"normal" | "training">("normal");
+const showTechniqueModal = ref(false);
+const currentTrainingTechnique = ref<TrainingTechnique | null>(null);
+const highlightedCells = ref<{ row: number; col: number; type: string }[]>([]);
+const trainingBanner = ref<string | null>(null);
+const selectedTechniqueKey = ref<string>("");
+const hintRemovalApplied = ref(false);
+const savedPuzzles = ref<SavedPuzzle[]>([]);
+const LOCAL_STORAGE_KEY = "sudokuSavedPuzzles";
 const modalPosition = ref({ x: 0, y: 0 });
-// ドラッグ中フラグ
 const isDragging = ref(false);
-// ドラッグ開始時のオフセット
 let dragOffset = { x: 0, y: 0 };
 
-// モーダルヘッダを押したとき
-function onModalMouseDown(event: MouseEvent) {
-  isDragging.value = true;
-  dragOffset.x = event.clientX - modalPosition.value.x;
-  dragOffset.y = event.clientY - modalPosition.value.y;
-}
+let gamePuzzle: SudokuValue[][] = Array.from({ length: 9 }, () => Array(9).fill(0));
+let { board, flatCells, setCellValue, toggleUserCandidate, resetBoard, updateAllCandidates } = useSudoku(gamePuzzle);
 
-// マウス移動時
-function onMouseMove(event: MouseEvent) {
-  if (!isDragging.value) return;
-  modalPosition.value.x = event.clientX - dragOffset.x;
-  modalPosition.value.y = event.clientY - dragOffset.y;
-}
+// --- Computed Properties ---
+const sortedSavedPuzzles = computed(() => {
+  return [...savedPuzzles.value].sort((a, b) => b.timestamp - a.timestamp);
+});
+const allFilled = computed(() => flatCells.value.every((c) => c.value !== 0));
+const allCorrect = computed(() => {
+  if (!allFilled.value) return false;
+  const g = board.value;
+  const isValidGroup = (nums: number[]) => new Set(nums).size === 9 && nums.every((n) => n >= 1 && n <= 9);
+  for (let i = 0; i < 9; i++) {
+    if (!isValidGroup(g[i].map((cell) => cell.value)) || !isValidGroup(g.map((r) => r[i].value))) return false;
+  }
+  for (let br = 0; br < 3; br++) { for (let bc = 0; bc < 3; bc++) {
+      const block: number[] = [];
+      for (let r_block = br * 3; r_block < br * 3 + 3; r_block++) {
+        for (let c_block = bc * 3; c_block < bc * 3 + 3; c_block++) { block.push(g[r_block][c_block].value); }
+      }
+      if (!isValidGroup(block)) return false;
+  }}
+  return true;
+});
 
-// マウスを離したとき
-function onMouseUp() {
-  isDragging.value = false;
-}
 
+// --- Watchers ---
+watch(gameMode, (mode) => {
+  if (mode === "normal") {
+    highlightedCells.value = [];
+    hintRemovalApplied.value = false;
+    showTechniqueModal.value = false;
+  }
+});
+
+
+// --- Lifecycle Hooks ---
 onMounted(() => {
   window.addEventListener("mousemove", onMouseMove);
   window.addEventListener("mouseup", onMouseUp);
@@ -263,147 +281,60 @@ onBeforeUnmount(() => {
   window.removeEventListener("mouseup", onMouseUp);
 });
 
-/**
- * CandidateGrid.vue から emit された toggleCandidate を
- * useSudoku の toggleUserCandidate に渡すラッパー
- */
-function onToggleCandidate(payload: {
-  row: number;
-  col: number;
-  candidate: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
-}) {
+
+// --- Methods ---
+
+// Modal Dragging
+function onModalMouseDown(event: MouseEvent) {
+  isDragging.value = true;
+  dragOffset.x = event.clientX - modalPosition.value.x;
+  dragOffset.y = event.clientY - modalPosition.value.y;
+}
+function onMouseMove(event: MouseEvent) {
+  if (!isDragging.value) return;
+  modalPosition.value.x = event.clientX - dragOffset.x;
+  modalPosition.value.y = event.clientY - dragOffset.y;
+}
+function onMouseUp() {
+  isDragging.value = false;
+}
+
+// Sudoku Logic
+function onToggleCandidate(payload: { row: number; col: number; candidate: CandidateNumber; }) {
   toggleUserCandidate(payload.row, payload.col, payload.candidate);
 }
-// UUID生成のための簡易関数
-function generateUUID(): string {
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
-    const r = (Math.random() * 16) | 0;
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}
-
-// 型
-type Difficulty = "easy" | "medium" | "hard"; // trainingを追加
-type SudokuValue = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
-type InputMode = "confirm" | "thinking";
-
-// --- UI 状態 ---
-const inputMode = ref<InputMode>("confirm");
-const selectedNumber = ref(0);
-const currentDifficulty = ref<Difficulty>("easy");
-const errorMessage = ref("");
-const selectedCell = ref<Cell | null>(null);
-const showSavedPuzzles = ref(false);
-
-// トレーニングモード用の状態
-const gameMode = ref<"normal" | "training">("normal");
-const showTechniqueModal = ref(false);
-const currentTrainingTechnique = ref<TrainingTechnique | null>(null);
-const highlightedCells = ref<{ row: number; col: number; type: string }[]>([]);
-
-// gameMode が変わったらトレーニング専用ステートだけ切り替え
-watch(gameMode, (mode) => {
-  if (mode === "normal") {
-    highlightedCells.value = [];
-    hintRemovalApplied.value = false;
-    showTechniqueModal.value = false;
-  }
-});
-// ゲーム開始時のパズルを保持
-let gamePuzzle: SudokuValue[][] = Array.from(
-  { length: 9 },
-  () => Array(9).fill(0) as SudokuValue[]
-);
-
-// Sudoku API インスタンス
-let {
-  board,
-  flatCells,
-  setCellValue,
-  toggleUserCandidate,
-  resetBoard,
-  updateAllCandidates,
-} = useSudoku(gamePuzzle as SudokuValue[][]);
-
-const savedPuzzles = ref<SavedPuzzle[]>([]);
-const LOCAL_STORAGE_KEY = "sudokuSavedPuzzles";
-
-// --- Computed ---
-const sortedSavedPuzzles = computed(() => {
-  return [...savedPuzzles.value].sort((a, b) => b.timestamp - a.timestamp);
-});
-
-const allFilled = computed(() => flatCells.value.every((c) => c.value !== 0));
-const allCorrect = computed(() => {
-  if (!allFilled.value) return false;
-  const g = board.value;
-  const isValidGroup = (nums: number[]) =>
-    new Set(nums).size === 9 && nums.every((n) => n >= 1 && n <= 9);
-  for (let i = 0; i < 9; i++) {
-    if (
-      !isValidGroup(g[i].map((cell) => cell.value)) ||
-      !isValidGroup(g.map((r) => r[i].value))
-    )
-      return false;
-  }
-  for (let br = 0; br < 3; br++) {
-    for (let bc = 0; bc < 3; bc++) {
-      const block: number[] = [];
-      for (let r_block = br * 3; r_block < br * 3 + 3; r_block++) {
-        for (let c_block = bc * 3; c_block < bc * 3 + 3; c_block++) {
-          block.push(g[r_block][c_block].value);
-        }
-      }
-      if (!isValidGroup(block)) return false;
-    }
-  }
-  return true;
-});
-
-// --- メソッド ---
 
 // ★★★ 修正点③：トレーニングモードへの移行処理 ★★★
-// トレーニングモードに入る際に、古い状態をクリアする
 function setTrainingMode() {
   gameMode.value = 'training';
   currentTrainingTechnique.value = null;
   trainingBanner.value = null;
   selectedCell.value = null;
   highlightedCells.value = [];
-  // 盤面もクリアする
   clearPuzzle(false);
 }
 
-const trainingBanner = ref<string | null>(null);
 function startTraining(technique: TrainingTechnique) {
-  // gameModeのセットはsetTrainingModeで行う
   errorMessage.value = "";
   currentTrainingTechnique.value = technique;
   highlightedCells.value = [];
   inputMode.value = "thinking";
 
-  const puzzleForSudoku = technique.puzzle.map((row) =>
-    row.map((cell) => cell as SudokuValue)
-  );
+  const puzzleForSudoku = technique.puzzle.map((row) => row.map((cell) => cell as SudokuValue));
   gamePuzzle = puzzleForSudoku;
 
   const api = useSudoku(gamePuzzle);
   board.value = api.board.value;
-  flatCells.value = api.flatCells.value;
   setCellValue = api.setCellValue;
   toggleUserCandidate = api.toggleUserCandidate;
   resetBoard = api.resetBoard;
   updateAllCandidates = api.updateAllCandidates;
-  
+
   selectedNumber.value = 0;
   selectedCell.value = null;
-
   showTechniqueModal.value = true;
   trainingBanner.value = `🎓 トレーニングモード：${technique.name}`;
 }
-
-const selectedTechniqueKey = ref<string>("");
 
 function onSelectTechnique() {
   const key = selectedTechniqueKey.value;
@@ -417,38 +348,30 @@ function onSelectTechnique() {
 function exitTrainingMode() {
   gameMode.value = "normal";
   currentTrainingTechnique.value = null;
-  trainingBanner.value = null; // バナーもクリア
+  trainingBanner.value = null;
   highlightedCells.value = [];
   hintRemovalApplied.value = false;
   showTechniqueModal.value = false;
   startGame();
 }
 
-const hintRemovalApplied = ref(false);
 function showTechniqueHint() {
   if (!currentTrainingTechnique.value) return;
   highlightedCells.value = currentTrainingTechnique.value.highlight;
-
   if (currentTrainingTechnique.value.removalCandidates) {
     hintRemovalApplied.value = true;
   }
 }
 
 function getHighlightType(cell: Cell): string | null {
-  const primary = highlightedCells.value.find(
-    (h) => h.row === cell.row && h.col === cell.col && h.type === "primary"
-  );
-  if (primary) {
-    return "primary";
-  }
-  const secondary = highlightedCells.value.find(
-    (h) => h.row === cell.row && h.col === cell.col && h.type === "secondary"
-  );
+  const primary = highlightedCells.value.find(h => h.row === cell.row && h.col === cell.col && h.type === "primary");
+  if (primary) return "primary";
+  const secondary = highlightedCells.value.find(h => h.row === cell.row && h.col === cell.col && h.type === "secondary");
   return secondary ? "secondary" : null;
 }
 
+// ★★★ 修正点①：キーボード入力処理 ★★★
 function handleKeyDown(event: KeyboardEvent) {
-  // ★★★ 修正点②：スペースキーの処理をここに集約 ★★★
   if (event.key === ' ' || event.key === 'Spacebar') {
     event.preventDefault();
     event.stopPropagation();
@@ -458,18 +381,10 @@ function handleKeyDown(event: KeyboardEvent) {
     return;
   }
 
-  if (showSavedPuzzles.value || showTechniqueModal.value) {
-    return;
-  }
+  if (showSavedPuzzles.value || showTechniqueModal.value) return;
+  if (!selectedCell.value) return;
 
-  if (!selectedCell.value) {
-    return;
-  }
-
-  let newRow = selectedCell.value.row;
-  let newCol = selectedCell.value.col;
-  let moved = false;
-
+  let newRow = selectedCell.value.row, newCol = selectedCell.value.col, moved = false;
   switch (event.key) {
     case "ArrowUp": newRow = Math.max(0, newRow - 1); moved = true; break;
     case "ArrowDown": newRow = Math.min(8, newRow + 1); moved = true; break;
@@ -480,18 +395,11 @@ function handleKeyDown(event: KeyboardEvent) {
         onInputCell({ row: newRow, col: newCol, val: 0 });
         event.preventDefault();
       } else if (!selectedCell.value.isGiven && inputMode.value === "thinking") {
-        const currentCandidates = selectedCell.value.userCandidates;
-        const candidatesToDelete: (1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9)[] = [];
-        for (const key in currentCandidates) {
-          const candidateNum = parseInt(key) as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
-          if (currentCandidates[candidateNum]) {
-            candidatesToDelete.push(candidateNum);
-          }
-        }
-        if (candidatesToDelete.length > 0) {
-          candidatesToDelete.forEach((cand) => {
-            toggleUserCandidate(newRow, newCol, cand);
-          });
+        const cands = Object.keys(selectedCell.value.userCandidates)
+          .filter(k => selectedCell.value!.userCandidates[k as unknown as CandidateNumber])
+          .map(k => parseInt(k) as CandidateNumber);
+        if (cands.length > 0) {
+          cands.forEach(cand => toggleUserCandidate(newRow, newCol, cand));
           event.preventDefault();
         }
       }
@@ -501,7 +409,6 @@ function handleKeyDown(event: KeyboardEvent) {
       event.preventDefault();
       return;
   }
-
   if (moved) {
     selectedCell.value = board.value[newRow][newCol];
     event.preventDefault();
@@ -511,19 +418,13 @@ function handleKeyDown(event: KeyboardEvent) {
 function isRelatedCell(cell: Cell): boolean {
   if (gameMode.value === 'training' || !selectedCell.value) return false;
   if (cell.row === selectedCell.value.row && cell.col === selectedCell.value.col) return false;
-  const selectedRow = selectedCell.value.row;
-  const selectedCol = selectedCell.value.col;
-  if (cell.row === selectedRow || cell.col === selectedCol) return true;
-  const selectedBlockRow = Math.floor(selectedRow / 3);
-  const selectedBlockCol = Math.floor(selectedCol / 3);
-  const cellBlockRow = Math.floor(cell.row / 3);
-  const cellBlockCol = Math.floor(cell.col / 3);
-  return selectedBlockRow === cellBlockRow && selectedBlockCol === cellBlockCol;
+  const { row: selRow, col: selCol } = selectedCell.value;
+  if (cell.row === selRow || cell.col === selCol) return true;
+  return Math.floor(cell.row / 3) === Math.floor(selRow / 3) && Math.floor(cell.col / 3) === Math.floor(selCol / 3);
 }
 
 function toggleInputMode() {
   inputMode.value = inputMode.value === "confirm" ? "thinking" : "confirm";
-  errorMessage.value = "";
 }
 
 function setDifficulty(diff: Difficulty) {
@@ -540,7 +441,6 @@ function startGame() {
   
   const api = useSudoku(gamePuzzle);
   board.value = api.board.value;
-  flatCells.value = api.flatCells.value;
   setCellValue = api.setCellValue;
   toggleUserCandidate = api.toggleUserCandidate;
   resetBoard = api.resetBoard;
@@ -554,13 +454,9 @@ function startGame() {
 
 function clearPuzzle(selectDefaultCell: boolean = true) {
   errorMessage.value = "";
-  currentTrainingTechnique.value = null;
-  highlightedCells.value = [];
   gamePuzzle = Array.from({ length: 9 }, () => Array(9).fill(0) as SudokuValue[]);
-  
   const api = useSudoku(gamePuzzle);
   board.value = api.board.value;
-  flatCells.value = api.flatCells.value;
   setCellValue = api.setCellValue;
   toggleUserCandidate = api.toggleUserCandidate;
   resetBoard = api.resetBoard;
@@ -579,7 +475,6 @@ function resetAll() {
   highlightedCells.value = [];
   const api = useSudoku(gamePuzzle as SudokuValue[][]);
   board.value = api.board.value;
-  flatCells.value = api.flatCells.value;
   setCellValue = api.setCellValue;
   toggleUserCandidate = api.toggleUserCandidate;
   resetBoard = api.resetBoard;
@@ -626,8 +521,8 @@ function isConflict(row: number, col: number, val: number): boolean {
     if (r !== row && board.value[r][col].value === val) return true;
   }
   const br = Math.floor(row / 3) * 3, bc = Math.floor(col / 3) * 3;
-  for (let r_block = br; r_block < br + 3; r_block++) {
-    for (let c_block = bc; c_block < bc + 3; c_block++) {
+  for (let r_block = br; r_block < br * 3 + 3; r_block++) {
+    for (let c_block = bc; c_block < bc * 3 + 3; c_block++) {
       if (!(r_block === row && c_block === col) && board.value[r_block][c_block].value === val) {
         return true;
       }
@@ -651,15 +546,23 @@ function onInputCell(payload: { row: number; col: number; val: number }) {
     }
     setCellValue(row, col, val as SudokuValue);
   } else {
-    toggleUserCandidate(row, col, val as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9);
+    toggleUserCandidate(row, col, val as CandidateNumber);
   }
 }
 
-function numbersFromCandidates(candidates: Candidates): (1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9)[] {
-  const nums: (1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9)[] = [];
+function generateUUID(): string {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+function numbersFromCandidates(candidates: Candidates): CandidateNumber[] {
+  const nums: CandidateNumber[] = [];
   for (let i = 1; i <= 9; i++) {
-    if (candidates[i as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9]) {
-      nums.push(i as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9);
+    if (candidates[i as CandidateNumber]) {
+      nums.push(i as CandidateNumber);
     }
   }
   return nums;
@@ -667,10 +570,7 @@ function numbersFromCandidates(candidates: Candidates): (1 | 2 | 3 | 4 | 5 | 6 |
 
 function saveCurrentPuzzle() {
   const puzzleName = prompt("パズル名を入力してください:");
-  if (!puzzleName || puzzleName.trim() === "") {
-    alert("パズル名が入力されませんでした。保存をキャンセルします。");
-    return;
-  }
+  if (!puzzleName || puzzleName.trim() === "") { alert("パズル名が入力されませんでした。保存をキャンセルします。"); return; }
   const boardData: SavedCellData[][] = board.value.map((row) =>
     row.map((cell) => ({
       value: cell.value,
@@ -699,8 +599,7 @@ function loadSavedPuzzles() {
   try {
     const data = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (data) {
-      const parsedData: SavedPuzzle[] = JSON.parse(data);
-      savedPuzzles.value = parsedData;
+      savedPuzzles.value = JSON.parse(data);
     }
   } catch (e) {
     console.error("Failed to load puzzles from LocalStorage:", e);
@@ -720,6 +619,7 @@ function loadPuzzle(id: string) {
       }
     }
   }
+  
   const savedTech = trainingPuzzles.find((t) => t.name === puzzleToLoad.name);
   if (savedTech) {
     currentTrainingTechnique.value = savedTech;
@@ -732,7 +632,7 @@ function loadPuzzle(id: string) {
 
   let newUseSudokuApi = useSudoku(newGamePuzzle);
   board.value = newUseSudokuApi.board.value;
-  flatCells.value = newUseSudokuApi.flatCells.value;
+  // flatCells.value = newUseSudokuApi.flatCells.value; // ビルドエラーのため削除
   setCellValue = newUseSudokuApi.setCellValue;
   toggleUserCandidate = newUseSudokuApi.toggleUserCandidate;
   resetBoard = newUseSudokuApi.resetBoard;
@@ -744,11 +644,7 @@ function loadPuzzle(id: string) {
       const currentCell = board.value[r][c];
       if (savedCell.value !== 0 && !savedCell.isGiven) {
         board.value[r][c].value = savedCell.value as SudokuValue;
-      } else if (
-        savedCell.value === 0 &&
-        currentCell.value !== 0 &&
-        !currentCell.isGiven
-      ) {
+      } else if (savedCell.value === 0 && currentCell.value !== 0 && !currentCell.isGiven) {
         board.value[r][c].value = 0;
       }
       for (let i = 1; i <= 9; i++) {
@@ -950,4 +846,4 @@ function deletePuzzle(id: string) {
   padding: 6px;
   font-size: 1rem;
 }
-</style> 
+</style>
