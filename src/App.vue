@@ -117,19 +117,15 @@
         :key="`${cell.row}-${cell.col}`"
         :cell="cell"
         :inputMode="inputMode"
-        :selectedNumber="selectedNumber"
-        :isSelected="
-          selectedCell
-            ? selectedCell.row === cell.row && selectedCell.col === cell.col
-            : false
+        :is-selected="
+          selectedCell?.row === cell.row && selectedCell?.col === cell.col
         "
-        :isRelated="isRelatedCell(cell)"
-        :highlightType="getHighlightType(cell)"
+        :is-related="isRelatedCell(cell)"
+        :highlight-type="getHighlightType(cell)"
         :is-training="gameMode === 'training'"
-        :hintRemovalApplied="hintRemovalApplied"
-        :removalCandidates="currentTrainingTechnique?.removalCandidates || []"
+        :hint-removal-applied="hintRemovalApplied"
+        :removal-candidates="currentTrainingTechnique?.removalCandidates || []"
         @selectCell="onSelectCellFromBoard"
-        @inputCell="onInputCell"
         @toggleCandidate="handleToggleCandidate"
       />
     </div>
@@ -202,13 +198,16 @@ import type {
   Candidates,
   Board,
   SudokuValue,
-  CandidateNumber
+  CandidateNumber,
 } from "@/types/sudoku";
 import { useSudoku } from "@/composables/useSudoku";
 import SudokuCell from "@/components/SudokuCell.vue";
 import NumberPicker from "@/components/NumberPicker.vue";
 import { makePuzzleByDifficulty } from "@/utils/puzzleGenerator";
-import { trainingPuzzles, type TrainingTechnique } from "@/utils/trainingPuzzles";
+import {
+  trainingPuzzles,
+  type TrainingTechnique,
+} from "@/utils/trainingPuzzles";
 import { nextTick, onMounted, onBeforeUnmount, watch } from "vue";
 
 // --- Type Definitions ---
@@ -234,8 +233,17 @@ const modalPosition = ref({ x: 0, y: 0 });
 const isDragging = ref(false);
 let dragOffset = { x: 0, y: 0 };
 
-let gamePuzzle: SudokuValue[][] = Array.from({ length: 9 }, () => Array(9).fill(0));
-let { board, flatCells, setCellValue, toggleUserCandidate, resetBoard, updateAllCandidates } = useSudoku(gamePuzzle);
+let gamePuzzle: SudokuValue[][] = Array.from({ length: 9 }, () =>
+  Array(9).fill(0)
+);
+let {
+  board,
+  flatCells,
+  setCellValue,
+  toggleUserCandidate,
+  resetBoard,
+  updateAllCandidates,
+} = useSudoku(gamePuzzle);
 
 // --- Computed Properties ---
 const sortedSavedPuzzles = computed(() => {
@@ -245,20 +253,28 @@ const allFilled = computed(() => flatCells.value.every((c) => c.value !== 0));
 const allCorrect = computed(() => {
   if (!allFilled.value) return false;
   const g = board.value;
-  const isValidGroup = (nums: number[]) => new Set(nums).size === 9 && nums.every((n) => n >= 1 && n <= 9);
+  const isValidGroup = (nums: number[]) =>
+    new Set(nums).size === 9 && nums.every((n) => n >= 1 && n <= 9);
   for (let i = 0; i < 9; i++) {
-    if (!isValidGroup(g[i].map((cell) => cell.value)) || !isValidGroup(g.map((r) => r[i].value))) return false;
+    if (
+      !isValidGroup(g[i].map((cell) => cell.value)) ||
+      !isValidGroup(g.map((r) => r[i].value))
+    )
+      return false;
   }
-  for (let br = 0; br < 3; br++) { for (let bc = 0; bc < 3; bc++) {
+  for (let br = 0; br < 3; br++) {
+    for (let bc = 0; bc < 3; bc++) {
       const block: number[] = [];
       for (let r_block = br * 3; r_block < br * 3 + 3; r_block++) {
-        for (let c_block = bc * 3; c_block < bc * 3 + 3; c_block++) { block.push(g[r_block][c_block].value); }
+        for (let c_block = bc * 3; c_block < bc * 3 + 3; c_block++) {
+          block.push(g[r_block][c_block].value);
+        }
       }
       if (!isValidGroup(block)) return false;
-  }}
+    }
+  }
   return true;
 });
-
 
 // --- Watchers ---
 watch(gameMode, (mode) => {
@@ -268,7 +284,6 @@ watch(gameMode, (mode) => {
     showTechniqueModal.value = false;
   }
 });
-
 
 // --- Lifecycle Hooks ---
 onMounted(() => {
@@ -280,7 +295,6 @@ onBeforeUnmount(() => {
   window.removeEventListener("mousemove", onMouseMove);
   window.removeEventListener("mouseup", onMouseUp);
 });
-
 
 // --- Methods ---
 
@@ -300,32 +314,35 @@ function onMouseUp() {
 }
 
 // Sudoku Logic
-function handleToggleCandidate(payload: { row: number; col: number; candidate: CandidateNumber }) {
+function handleToggleCandidate(payload: {
+  row: number;
+  col: number;
+  candidate: CandidateNumber;
+}) {
   // 1. 候補入力モードでないなら無視
   if (inputMode.value !== "thinking") return;
 
-  // 2. セルが選択されていない or 別のセルなら「選択するだけ」
+  const { row, col, candidate } = payload;
+
+  // 2. 未選択セル or 別セルのクリック → 「選択のみ」して終わり
   if (
     !selectedCell.value ||
-    selectedCell.value.row !== payload.row ||
-    selectedCell.value.col !== payload.col
+    selectedCell.value.row !== row ||
+    selectedCell.value.col !== col
   ) {
-    // 単なる座標ではなく、flatCells から該当 Cell オブジェクトを取得してセット
-    const cell = flatCells.value.find(
-      (c) => c.row === payload.row && c.col === payload.col
-    );
+    const cell = flatCells.value.find((c) => c.row === row && c.col === col);
     if (cell) {
       selectedCell.value = cell;
     }
     return;
   }
 
-  // 3. ここまで来たら「選択済みセルと同じ」なのでトグル実行
-  toggleUserCandidate(payload.row, payload.col, payload.candidate);
+  // 3. 同じセルを再びクリック → 候補トグル
+  toggleUserCandidate(row, col, candidate);
 }
 // ★★★ 修正点②：トレーニングモードへの移行処理 ★★★
 function setTrainingMode() {
-  gameMode.value = 'training';
+  gameMode.value = "training";
   currentTrainingTechnique.value = null;
   trainingBanner.value = null;
   selectedCell.value = null;
@@ -340,7 +357,9 @@ function startTraining(technique: TrainingTechnique) {
   inputMode.value = "thinking";
   hintRemovalApplied.value = false;
 
-  const puzzleForSudoku = technique.puzzle.map((row) => row.map((cell) => cell as SudokuValue));
+  const puzzleForSudoku = technique.puzzle.map((row) =>
+    row.map((cell) => cell as SudokuValue)
+  );
   gamePuzzle = puzzleForSudoku;
 
   const api = useSudoku(gamePuzzle);
@@ -385,18 +404,22 @@ function showTechniqueHint() {
 }
 
 function getHighlightType(cell: Cell): string | null {
-  const primary = highlightedCells.value.find(h => h.row === cell.row && h.col === cell.col && h.type === "primary");
+  const primary = highlightedCells.value.find(
+    (h) => h.row === cell.row && h.col === cell.col && h.type === "primary"
+  );
   if (primary) return "primary";
-  const secondary = highlightedCells.value.find(h => h.row === cell.row && h.col === cell.col && h.type === "secondary");
+  const secondary = highlightedCells.value.find(
+    (h) => h.row === cell.row && h.col === cell.col && h.type === "secondary"
+  );
   return secondary ? "secondary" : null;
 }
 
 // ★★★ 修正点①：キーボード入力処理 ★★★
 function handleKeyDown(event: KeyboardEvent) {
-  if (event.key === ' ' || event.key === 'Spacebar') {
+  if (event.key === " " || event.key === "Spacebar") {
     event.preventDefault();
     event.stopPropagation();
-    if (gameMode.value === 'normal') {
+    if (gameMode.value === "normal") {
       toggleInputMode();
     }
     return;
@@ -405,27 +428,58 @@ function handleKeyDown(event: KeyboardEvent) {
   if (showSavedPuzzles.value || showTechniqueModal.value) return;
   if (!selectedCell.value) return;
 
-  let newRow = selectedCell.value.row, newCol = selectedCell.value.col, moved = false;
+  let newRow = selectedCell.value.row,
+    newCol = selectedCell.value.col,
+    moved = false;
   switch (event.key) {
-    case "ArrowUp": newRow = Math.max(0, newRow - 1); moved = true; break;
-    case "ArrowDown": newRow = Math.min(8, newRow + 1); moved = true; break;
-    case "ArrowLeft": newCol = Math.max(0, newCol - 1); moved = true; break;
-    case "ArrowRight": newCol = Math.min(8, newCol + 1); moved = true; break;
-    case "Backspace": case "Delete":
+    case "ArrowUp":
+      newRow = Math.max(0, newRow - 1);
+      moved = true;
+      break;
+    case "ArrowDown":
+      newRow = Math.min(8, newRow + 1);
+      moved = true;
+      break;
+    case "ArrowLeft":
+      newCol = Math.max(0, newCol - 1);
+      moved = true;
+      break;
+    case "ArrowRight":
+      newCol = Math.min(8, newCol + 1);
+      moved = true;
+      break;
+    case "Backspace":
+    case "Delete":
       if (!selectedCell.value.isGiven && selectedCell.value.value !== 0) {
         onInputCell({ row: newRow, col: newCol, val: 0 });
         event.preventDefault();
-      } else if (!selectedCell.value.isGiven && inputMode.value === "thinking") {
+      } else if (
+        !selectedCell.value.isGiven &&
+        inputMode.value === "thinking"
+      ) {
         const cands = Object.keys(selectedCell.value.userCandidates)
-          .filter(k => selectedCell.value!.userCandidates[k as unknown as CandidateNumber])
-          .map(k => parseInt(k) as CandidateNumber);
+          .filter(
+            (k) =>
+              selectedCell.value!.userCandidates[
+                k as unknown as CandidateNumber
+              ]
+          )
+          .map((k) => parseInt(k) as CandidateNumber);
         if (cands.length > 0) {
-          cands.forEach(cand => toggleUserCandidate(newRow, newCol, cand));
+          cands.forEach((cand) => toggleUserCandidate(newRow, newCol, cand));
           event.preventDefault();
         }
       }
       return;
-    case "1": case "2": case "3": case "4": case "5": case "6": case "7": case "8": case "9":
+    case "1":
+    case "2":
+    case "3":
+    case "4":
+    case "5":
+    case "6":
+    case "7":
+    case "8":
+    case "9":
       onNumberPicked(parseInt(event.key));
       event.preventDefault();
       return;
@@ -437,11 +491,18 @@ function handleKeyDown(event: KeyboardEvent) {
 }
 
 function isRelatedCell(cell: Cell): boolean {
-  if (gameMode.value === 'training' || !selectedCell.value) return false;
-  if (cell.row === selectedCell.value.row && cell.col === selectedCell.value.col) return false;
+  if (gameMode.value === "training" || !selectedCell.value) return false;
+  if (
+    cell.row === selectedCell.value.row &&
+    cell.col === selectedCell.value.col
+  )
+    return false;
   const { row: selRow, col: selCol } = selectedCell.value;
   if (cell.row === selRow || cell.col === selCol) return true;
-  return Math.floor(cell.row / 3) === Math.floor(selRow / 3) && Math.floor(cell.col / 3) === Math.floor(selCol / 3);
+  return (
+    Math.floor(cell.row / 3) === Math.floor(selRow / 3) &&
+    Math.floor(cell.col / 3) === Math.floor(selCol / 3)
+  );
 }
 
 function toggleInputMode() {
@@ -458,8 +519,10 @@ function startGame() {
   errorMessage.value = "";
   currentTrainingTechnique.value = null;
   highlightedCells.value = [];
-  gamePuzzle = makePuzzleByDifficulty(currentDifficulty.value) as SudokuValue[][];
-  
+  gamePuzzle = makePuzzleByDifficulty(
+    currentDifficulty.value
+  ) as SudokuValue[][];
+
   const api = useSudoku(gamePuzzle);
   board.value = api.board.value;
   flatCells = api.flatCells;
@@ -467,7 +530,7 @@ function startGame() {
   toggleUserCandidate = api.toggleUserCandidate;
   resetBoard = api.resetBoard;
   updateAllCandidates = api.updateAllCandidates;
-  
+
   selectedNumber.value = 0;
   nextTick(() => {
     selectedCell.value = flatCells.value.length > 0 ? flatCells.value[0] : null;
@@ -476,7 +539,10 @@ function startGame() {
 
 function clearPuzzle(selectDefaultCell: boolean = true) {
   errorMessage.value = "";
-  gamePuzzle = Array.from({ length: 9 }, () => Array(9).fill(0) as SudokuValue[]);
+  gamePuzzle = Array.from(
+    { length: 9 },
+    () => Array(9).fill(0) as SudokuValue[]
+  );
   const api = useSudoku(gamePuzzle);
   board.value = api.board.value;
   flatCells = api.flatCells;
@@ -484,11 +550,12 @@ function clearPuzzle(selectDefaultCell: boolean = true) {
   toggleUserCandidate = api.toggleUserCandidate;
   resetBoard = api.resetBoard;
   updateAllCandidates = api.updateAllCandidates;
-  
+
   selectedNumber.value = 0;
   if (selectDefaultCell) {
     nextTick(() => {
-      selectedCell.value = flatCells.value.length > 0 ? flatCells.value[0] : null;
+      selectedCell.value =
+        flatCells.value.length > 0 ? flatCells.value[0] : null;
     });
   }
 }
@@ -503,7 +570,7 @@ function resetAll() {
   toggleUserCandidate = api.toggleUserCandidate;
   resetBoard = api.resetBoard;
   updateAllCandidates = api.updateAllCandidates;
-  
+
   selectedNumber.value = 0;
   nextTick(() => {
     selectedCell.value = flatCells.value.length > 0 ? flatCells.value[0] : null;
@@ -530,7 +597,11 @@ function onNumberPicked(n: number) {
 
 function onSelectCellFromBoard(cell: Cell) {
   errorMessage.value = "";
-  if (selectedCell.value && selectedCell.value.row === cell.row && selectedCell.value.col === cell.col) {
+  if (
+    selectedCell.value &&
+    selectedCell.value.row === cell.row &&
+    selectedCell.value.col === cell.col
+  ) {
     selectedCell.value = null;
   } else {
     selectedCell.value = cell;
@@ -544,10 +615,14 @@ function isConflict(row: number, col: number, val: number): boolean {
   for (let r = 0; r < 9; r++) {
     if (r !== row && board.value[r][col].value === val) return true;
   }
-  const br = Math.floor(row / 3) * 3, bc = Math.floor(col / 3) * 3;
+  const br = Math.floor(row / 3) * 3,
+    bc = Math.floor(col / 3) * 3;
   for (let r_block = br; r_block < br * 3 + 3; r_block++) {
     for (let c_block = bc; c_block < bc * 3 + 3; c_block++) {
-      if (!(r_block === row && c_block === col) && board.value[r_block][c_block].value === val) {
+      if (
+        !(r_block === row && c_block === col) &&
+        board.value[r_block][c_block].value === val
+      ) {
         return true;
       }
     }
@@ -565,7 +640,9 @@ function onInputCell(payload: { row: number; col: number; val: number }) {
   }
   if (inputMode.value === "confirm") {
     if (isConflict(row, col, val)) {
-      errorMessage.value = `重複: (${row + 1},${col + 1}) に ${val} は置けません`;
+      errorMessage.value = `重複: (${row + 1},${
+        col + 1
+      }) に ${val} は置けません`;
       return;
     }
     setCellValue(row, col, val as SudokuValue);
@@ -594,7 +671,10 @@ function numbersFromCandidates(candidates: Candidates): CandidateNumber[] {
 
 function saveCurrentPuzzle() {
   const puzzleName = prompt("パズル名を入力してください:");
-  if (!puzzleName || puzzleName.trim() === "") { alert("パズル名が入力されませんでした。保存をキャンセルします。"); return; }
+  if (!puzzleName || puzzleName.trim() === "") {
+    alert("パズル名が入力されませんでした。保存をキャンセルします。");
+    return;
+  }
   const boardData: SavedCellData[][] = board.value.map((row) =>
     row.map((cell) => ({
       value: cell.value,
@@ -635,7 +715,10 @@ function loadPuzzle(id: string) {
   if (!puzzleToLoad) return;
   errorMessage.value = "";
 
-  const newGamePuzzle: SudokuValue[][] = Array.from({ length: 9 }, () => Array(9).fill(0) as SudokuValue[]);
+  const newGamePuzzle: SudokuValue[][] = Array.from(
+    { length: 9 },
+    () => Array(9).fill(0) as SudokuValue[]
+  );
   for (let r = 0; r < 9; r++) {
     for (let c = 0; c < 9; c++) {
       if (puzzleToLoad.boardData[r][c].isGiven) {
@@ -643,7 +726,7 @@ function loadPuzzle(id: string) {
       }
     }
   }
-  
+
   const savedTech = trainingPuzzles.find((t) => t.name === puzzleToLoad.name);
   if (savedTech) {
     currentTrainingTechnique.value = savedTech;
@@ -668,7 +751,11 @@ function loadPuzzle(id: string) {
       const currentCell = board.value[r][c];
       if (savedCell.value !== 0 && !savedCell.isGiven) {
         board.value[r][c].value = savedCell.value as SudokuValue;
-      } else if (savedCell.value === 0 && currentCell.value !== 0 && !currentCell.isGiven) {
+      } else if (
+        savedCell.value === 0 &&
+        currentCell.value !== 0 &&
+        !currentCell.isGiven
+      ) {
         board.value[r][c].value = 0;
       }
       for (let i = 1; i <= 9; i++) {
@@ -690,7 +777,10 @@ function deletePuzzle(id: string) {
   if (confirm("本当にこのパズルを削除しますか？")) {
     savedPuzzles.value = savedPuzzles.value.filter((p) => p.id !== id);
     try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(savedPuzzles.value));
+      localStorage.setItem(
+        LOCAL_STORAGE_KEY,
+        JSON.stringify(savedPuzzles.value)
+      );
       alert("パズルを削除しました。");
     } catch (e) {
       console.error("Failed to delete puzzle from LocalStorage:", e);
@@ -780,19 +870,26 @@ function deletePuzzle(id: string) {
   -ms-touch-action: none;
   user-select: none;
 }
-.congrats, .error-msg {
+.congrats,
+.error-msg {
   margin: 12px 0;
   font-size: 1.2rem;
   font-weight: bold;
 }
-.congrats { color: green; }
-.error-msg { color: red; }
+.congrats {
+  color: green;
+}
+.error-msg {
+  color: red;
+}
 .hint-btn {
   background-color: #28a745;
   color: white;
   border: none;
 }
-.hint-btn:hover { background-color: #218838; }
+.hint-btn:hover {
+  background-color: #218838;
+}
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -816,9 +913,19 @@ function deletePuzzle(id: string) {
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
   text-align: left;
 }
-.modal-content h2 { margin-top: 0; color: #333; }
-.modal-content p { line-height: 1.6; color: #555; }
-.modal-content ul { list-style: none; padding: 0; margin: 15px 0; }
+.modal-content h2 {
+  margin-top: 0;
+  color: #333;
+}
+.modal-content p {
+  line-height: 1.6;
+  color: #555;
+}
+.modal-content ul {
+  list-style: none;
+  padding: 0;
+  margin: 15px 0;
+}
 .saved-puzzle-item {
   display: flex;
   justify-content: space-between;
@@ -835,7 +942,10 @@ function deletePuzzle(id: string) {
   color: #555;
   margin-bottom: 5px;
 }
-.saved-puzzle-item div { display: flex; flex-shrink: 0; }
+.saved-puzzle-item div {
+  display: flex;
+  flex-shrink: 0;
+}
 .saved-puzzle-item button {
   padding: 6px 10px;
   margin-left: 8px;
@@ -845,8 +955,12 @@ function deletePuzzle(id: string) {
   background-color: #007acc;
   color: white;
 }
-.saved-puzzle-item button.delete-btn { background-color: #dc3545; }
-.saved-puzzle-item button:hover { opacity: 0.8; }
+.saved-puzzle-item button.delete-btn {
+  background-color: #dc3545;
+}
+.saved-puzzle-item button:hover {
+  opacity: 0.8;
+}
 .close-modal-btn {
   display: block;
   margin: 20px auto 0;
@@ -857,7 +971,9 @@ function deletePuzzle(id: string) {
   border-radius: 4px;
   cursor: pointer;
 }
-.close-modal-btn:hover { background-color: #5a6268; }
+.close-modal-btn:hover {
+  background-color: #5a6268;
+}
 .training-banner {
   background: #007acc;
   color: white;
