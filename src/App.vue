@@ -1,116 +1,45 @@
 <template>
-  <div
-    id="app"
-    tabindex="0"
-    @keydown="handleKeyDown"
-  >
+  <div id="app" @keydown="handleKeyDown" tabindex="0">
     <h1>数独 (Sudoku)</h1>
 
     <div class="mode-selector">
-      <button
-        :class="{ active: gameMode === 'normal' }"
-        @click="exitTrainingMode()"
-      >
-        通常モード
-      </button>
-      <button
-        :class="{ active: gameMode === 'training' }"
-        @click="gameMode = 'training'"
-      >
-        トレーニング
-      </button>
+      <button :class="{ active: gameMode === 'normal' }" @click="exitTrainingMode()">通常モード</button>
+      <button :class="{ active: gameMode === 'training' }" @click="gameMode = 'training'">トレーニング</button>
     </div>
 
     <div v-if="gameMode === 'normal'" class="difficulty-buttons">
-      <button
-        :class="{ active: currentDifficulty === 'easy' }"
-        @click="setDifficulty('easy')"
-      >
-        Easy
-      </button>
-      <button
-        :class="{ active: currentDifficulty === 'medium' }"
-        @click="setDifficulty('medium')"
-      >
-        Medium
-      </button>
-      <button
-        :class="{ active: currentDifficulty === 'hard' }"
-        @click="setDifficulty('hard')"
-      >
-        Hard
-      </button>
+      <button :class="{ active: currentDifficulty === 'easy' }" @click="setDifficulty('easy')">Easy</button>
+      <button :class="{ active: currentDifficulty === 'medium' }" @click="setDifficulty('medium')">Medium</button>
+      <button :class="{ active: currentDifficulty === 'hard' }" @click="setDifficulty('hard')">Hard</button>
     </div>
 
     <div v-if="gameMode === 'training'" class="training-select">
-      <div v-if="trainingBanner" class="training-banner">
-        {{ trainingBanner }}
-      </div>
+      <div v-if="trainingBanner" class="training-banner">{{ trainingBanner }}</div>
       <select v-model="selectedTechniqueKey" @change="onSelectTechnique">
         <option disabled value="">テクニックを選択してください</option>
-        <option
-          v-for="tech in trainingPuzzles"
-          :key="tech.key"
-          :value="tech.key"
-        >
-          {{ tech.name }}
-        </option>
+        <option v-for="tech in trainingPuzzles" :key="tech.key" :value="tech.key">{{ tech.name }}</option>
       </select>
     </div>
 
     <div class="init-buttons">
-      <button v-if="gameMode === 'normal'" @click="startGame">
-        ゲーム開始
-      </button>
-      <button
-        v-if="gameMode === 'training' && currentTrainingTechnique"
-        @click="showTechniqueHint"
-        class="hint-btn"
-      >
-        ヒント表示
-      </button>
+      <button v-if="gameMode === 'normal'" @click="startGame">ゲーム開始</button>
+      <button v-if="gameMode === 'training' && currentTrainingTechnique" @click="showTechniqueHint" class="hint-btn">ヒント表示</button>
+      <button v-if="gameMode === 'normal'" @click="clearPuzzle()" style="margin-left: 8px">空盤面</button>
+      <button v-if="gameMode === 'normal'" @click="resetAll" style="margin-left: 8px">リセット</button>
+      <button @click="saveCurrentPuzzle" style="margin-left: 8px">盤面保存</button>
+      <button v-if="gameMode === 'normal'" @click="showSavedPuzzles = true" style="margin-left: 8px">盤面保存履歴</button>
+    </div>
 
-      <button
-        v-if="gameMode === 'normal'"
-        @click="clearPuzzle()"
-        style="margin-left: 8px"
-      >
-        空盤面
-      </button>
-      <button
-        v-if="gameMode === 'normal'"
-        @click="resetAll"
-        style="margin-left: 8px"
-      >
-        リセット
-      </button>
-      <button @click="saveCurrentPuzzle" style="margin-left: 8px">
-        盤面保存
-      </button>
-      <button
-        v-if="gameMode === 'normal'"
-        @click="showSavedPuzzles = true"
-        style="margin-left: 8px"
-      >
-        盤面保存履歴
-      </button>
-    </div>
     <div class="input-mode-buttons">
-      <button
-        v-if="gameMode === 'normal'"
-        :class="{ active: inputMode === 'thinking' }"
-        @click="toggleInputMode"
-      >
-        候補入力モード
-      </button>
+      <button v-if="gameMode === 'normal'" :class="{ active: inputMode === 'thinking' }" @click="toggleInputMode">候補入力モード</button>
     </div>
+
     <NumberPicker v-if="gameMode === 'normal'" @pick="onNumberPicked" />
+
     <div v-if="errorMessage" class="validation-msg">{{ errorMessage }}</div>
 
     <div v-if="allCorrect" class="congrats">Congratulations！！！</div>
-    <div v-else-if="allFilled" class="error-msg">
-      間違いがあります。確認してください。
-    </div>
+    <div v-else-if="allFilled" class="error-msg">間違いがあります。確認してください。</div>
 
     <div class="board-wrapper">
       <SudokuCell
@@ -119,11 +48,7 @@
         :cell="cell"
         :inputMode="inputMode"
         :selectedNumber="selectedNumber"
-        :isSelected="
-          selectedCell
-            ? selectedCell.row === cell.row && selectedCell.col === cell.col
-            : false
-        "
+        :isSelected="selectedCell ? selectedCell.row === cell.row && selectedCell.col === cell.col : false"
         :isRelated="isRelatedCell(cell)"
         :highlightType="getHighlightType(cell)"
         :is-training="gameMode === 'training'"
@@ -135,74 +60,12 @@
       />
     </div>
 
-    <div
-      v-if="showSavedPuzzles"
-      class="modal-overlay"
-      @click.self="showSavedPuzzles = false"
-    >
-      <div class="modal-content">
-        <h2>保存されたパズル</h2>
-        <ul v-if="savedPuzzles.length > 0">
-          <li
-            v-for="puzzle in sortedSavedPuzzles"
-            :key="puzzle.id"
-            class="saved-puzzle-item"
-          >
-            <span
-              >{{ puzzle.name }} ({{
-                new Date(puzzle.timestamp).toLocaleString()
-              }}) - {{ puzzle.difficulty }}</span
-            >
-            <div>
-              <button @click="loadPuzzle(puzzle.id)">ロード</button>
-              <button @click="deletePuzzle(puzzle.id)" class="delete-btn">
-                削除
-              </button>
-            </div>
-          </li>
-        </ul>
-        <p v-else>保存されたパズルはありません。</p>
-        <button @click="showSavedPuzzles = false" class="close-modal-btn">
-          閉じる
-        </button>
-      </div>
     </div>
-
-    <div
-      v-if="showTechniqueModal"
-      class="modal-overlay"
-      @click.self="showTechniqueModal = false"
-    >
-      <div
-        class="modal-content"
-        :style="{
-          position: 'absolute',
-          top: modalPosition.y + 'px',
-          left: modalPosition.x + 'px',
-        }"
-        @mousedown.prevent="onModalMouseDown"
-      >
-        <h2>{{ currentTrainingTechnique?.name }}</h2>
-        <p v-html="currentTrainingTechnique?.description"></p>
-        <button @click="showTechniqueModal = false" class="close-modal-btn">
-          閉じる
-        </button>
-      </div>
-    </div>
-  </div>
 </template>
 
 <script lang="ts" setup>
 import { ref, computed, reactive, onMounted, onBeforeUnmount, nextTick } from "vue";
-import type {
-  Cell,
-  SavedPuzzle,
-  SavedCellData,
-  Candidates,
-  Board,
-  SudokuValue,
-  CandidateNumber,
-} from "@/types/sudoku";
+import type { Cell, SavedPuzzle, SavedCellData, Candidates, Board, SudokuValue, CandidateNumber } from "@/types/sudoku";
 import { useSudoku } from "@/composables/useSudoku";
 import SudokuCell from "@/components/SudokuCell.vue";
 import NumberPicker from "@/components/NumberPicker.vue";
@@ -230,12 +93,7 @@ let gamePuzzle: SudokuValue[][] = Array.from({ length: 9 }, () => Array(9).fill(
 const sudoku = reactive(useSudoku(gamePuzzle));
 
 // --- Computed ---
-const sortedSavedPuzzles = computed(() => {
-  return [...savedPuzzles.value].sort((a, b) => b.timestamp - a.timestamp);
-});
-
 const allFilled = computed(() => sudoku.flatCells.every((c) => c.value !== 0));
-
 const allCorrect = computed(() => {
   if (!allFilled.value) return false;
   const g = sudoku.board;
@@ -243,23 +101,18 @@ const allCorrect = computed(() => {
   for (let i = 0; i < 9; i++) {
     if (!isValidGroup(g[i].map((cell) => cell.value)) || !isValidGroup(g.map((r) => r[i].value))) return false;
   }
-  for (let br = 0; br < 3; br++) {
-    for (let bc = 0; bc < 3; bc++) {
+  for (let br = 0; br < 3; br++) { for (let bc = 0; bc < 3; bc++) {
       const block: number[] = [];
       for (let r_block = br * 3; r_block < br * 3 + 3; r_block++) {
-        for (let c_block = bc * 3; c_block < bc * 3 + 3; c_block++) {
-          block.push(g[r_block][c_block].value);
-        }
+        for (let c_block = bc * 3; c_block < bc * 3 + 3; c_block++) { block.push(g[r_block][c_block].value); }
       }
       if (!isValidGroup(block)) return false;
-    }
-  }
+  }}
   return true;
 });
-
+// (その他のcomputedプロパティも必要に応じてsudoku.xxxを使うように修正)
 
 // --- Methods ---
-
 function onToggleCandidate(payload: { row: number; col: number; candidate: CandidateNumber; }) {
   sudoku.toggleUserCandidate(payload.row, payload.col, payload.candidate);
 }
@@ -270,17 +123,10 @@ function startTraining(technique: TrainingTechnique) {
   currentTrainingTechnique.value = technique;
   highlightedCells.value = [];
   inputMode.value = "thinking";
-  hintRemovalApplied.value = false;
+  hintRemovalApplied.value = false; // ヒントフラグをリセット
   
   gamePuzzle = technique.puzzle.map((row) => row.map((cell) => cell as SudokuValue));
-  
   Object.assign(sudoku, useSudoku(gamePuzzle));
-  
-  // if (technique.prefilledCandidates) {
-  //   technique.prefilledCandidates.forEach(item => {
-  //     sudoku.setCellCandidates(item.row, item.col, item.candidates);
-  //   });
-  // }
 
   selectedNumber.value = 0;
   selectedCell.value = null;
@@ -330,54 +176,6 @@ function resetAll() {
   });
 }
 
-function loadPuzzle(id: string) {
-  const puzzleToLoad = savedPuzzles.value.find((p) => p.id === id);
-  if (!puzzleToLoad) return;
-  errorMessage.value = "";
-
-  gamePuzzle = Array.from({ length: 9 }, () => Array(9).fill(0) as SudokuValue[]);
-  for (let r = 0; r < 9; r++) {
-    for (let c = 0; c < 9; c++) {
-      if (puzzleToLoad.boardData[r][c].isGiven) {
-        gamePuzzle[r][c] = puzzleToLoad.boardData[r][c].value as SudokuValue;
-      }
-    }
-  }
-
-  const savedTech = trainingPuzzles.find((t) => t.name === puzzleToLoad.name);
-  if (savedTech) {
-    currentTrainingTechnique.value = savedTech;
-    gameMode.value = "training";
-  } else {
-    currentTrainingTechnique.value = null;
-    gameMode.value = "normal";
-  }
-  highlightedCells.value = [];
-
-  Object.assign(sudoku, useSudoku(gamePuzzle));
-
-  for (let r = 0; r < 9; r++) {
-    for (let c = 0; c < 9; c++) {
-      const savedCell = puzzleToLoad.boardData[r][c];
-      const currentCell = sudoku.board[r][c];
-      if (savedCell.value !== 0 && !savedCell.isGiven) {
-        currentCell.value = savedCell.value as SudokuValue;
-      }
-      for (let i = 1; i <= 9; i++) {
-        currentCell.userCandidates[i as CandidateNumber] = false;
-      }
-      savedCell.userCandidates.forEach((candidate) => {
-        currentCell.userCandidates[candidate] = true;
-      });
-    }
-  }
-  sudoku.updateAllCandidates();
-  selectedCell.value = null;
-  selectedNumber.value = 0;
-  showSavedPuzzles.value = false;
-  alert(`「${puzzleToLoad.name}」をロードしました！`);
-}
-
 function handleKeyDown(event: KeyboardEvent) {
   if (showSavedPuzzles.value || showTechniqueModal.value) return;
   if (event.key === ' ' || event.key === 'Spacebar') {
@@ -387,9 +185,7 @@ function handleKeyDown(event: KeyboardEvent) {
   }
   if (!selectedCell.value) return;
   
-  let newRow = selectedCell.value.row;
-  let newCol = selectedCell.value.col;
-  let moved = false;
+  let newRow = selectedCell.value.row, newCol = selectedCell.value.col, moved = false;
   switch (event.key) {
     case "ArrowUp": newRow = Math.max(0, newRow - 1); moved = true; break;
     case "ArrowDown": newRow = Math.min(8, newRow + 1); moved = true; break;

@@ -87,18 +87,6 @@ export function useSudoku(initial?: (0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9)[][])
     cell.userCandidates[n] = !cell.userCandidates[n];
   }
 
-  // ★★★ トレーニング用に、特定のセルの自動候補を上書きする関数を追加 ★★★
-  function setCellCandidates(r: number, c: number, candidatesToSet: CandidateNumber[]) {
-    const cell = board.value[r][c];
-    if (cell) {
-      const newCandidates = cloneCandidates(EMPTY_CANDIDATES);
-      candidatesToSet.forEach(n => {
-        newCandidates[n] = true;
-      });
-      cell.candidates = newCandidates;
-    }
-  }
-
   function resetBoard() {
     initBoard();
   }
@@ -107,5 +95,5 @@ export function useSudoku(initial?: (0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9)[][])
 
   const flatCells = computed(() => board.value.flat());
 
-  return { board, flatCells, setCellValue, toggleUserCandidate, resetBoard, updateAllCandidates, setCellCandidates };
+  return { board, flatCells, setCellValue, toggleUserCandidate, resetBoard, updateAllCandidates };
 }

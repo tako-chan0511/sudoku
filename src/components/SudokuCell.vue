@@ -37,7 +37,7 @@
 
 <script setup lang="ts">
 import { defineEmits, defineProps, computed } from 'vue';
-import type { Cell, InputMode, CandidateNumber } from '@/types/sudoku';
+import type { Cell, InputMode } from '@/types/sudoku';
 import CandidateGrid from './CandidateGrid.vue';
 
 const props = defineProps<{
