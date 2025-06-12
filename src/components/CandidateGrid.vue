@@ -15,88 +15,67 @@
 
 <script lang="ts" setup>
 import { computed, defineProps, defineEmits } from 'vue';
-import type { Cell, Candidates } from '@/types/sudoku';
+import type { Cell, Candidates, CandidateNumber } from '@/types/sudoku';
 
-// Props 定義: ハイライト情報と候補削除フラグも受け取る
 const props = defineProps<{
   autoCandidates: Candidates;
   userCandidates: Candidates;
   isEditable: boolean;
-  cellInfo: Cell ;
+  cellInfo: Cell;
   isTraining: boolean;
   hintRemovalApplied: boolean;
   removalCandidates: number[];
   highlightType: string | null;
 }>();
 
-// Emit 定義
 const emits = defineEmits<{
   (e: 'toggleCandidate', n: number): void;
   (e: 'selectCell', payload: Cell): void;
 }>();
 
-// 候補表示用マップを computed で生成
 const displayCandidatesMap = computed(() => {
+  // 通常モードでは、ユーザー候補のみ表示
   if (!props.isTraining) {
-    return props.userCandidates;
+    const hasUserCandidates = Object.values(props.userCandidates).some(v => v);
+    return hasUserCandidates ? props.userCandidates : EMPTY_CANDIDATES; // 未入力なら何も表示しない
   }
-  // ヒント適用前は自動候補を表示
+  
+  // --- ここからトレーニングモードのロジック ---
+  // ヒント適用前は、自動候補（prefilledCandidatesで上書き済みのもの）を表示
   if (!props.hintRemovalApplied) {
     return props.autoCandidates;
   }
-  // Secondary ハイライトのセルだけ autoCandidates から除外
+  
+  // ヒント適用後、かつ secondary ハイライトのセルは、候補をフィルタリングして表示
   if (props.highlightType === 'secondary') {
     const filtered: Candidates = { ...props.autoCandidates };
     props.removalCandidates.forEach(n => {
-      filtered[n] = false;
+      if (filtered[n as CandidateNumber]) {
+        filtered[n as CandidateNumber] = false;
+      }
     });
     return filtered;
   }
-  // primary セルや他のセルはそのまま autoCandidates
+  
+  // それ以外のセル（primaryなど）は、そのまま自動候補を表示
   return props.autoCandidates;
 });
 
-// 候補セルクリック時の処理
+const EMPTY_CANDIDATES: Candidates = { 1: false, 2: false, 3: false, 4: false, 5: false, 6: false, 7: false, 8: false, 9: false };
+
 function onSmallCellClick(n: number) {
-  // 編集モードでない場合はセル選択のみ
   if (!props.isEditable) {
     emits('selectCell', props.cellInfo);
     return;
   }
-  // セル選択と候補トグルを発火
   emits('selectCell', props.cellInfo);
   emits('toggleCandidate', n);
 }
 </script>
 
 <style scoped>
-.candidate-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: repeat(3, 1fr);
-  width: 100%;
-  height: 100%;
-  box-sizing: border-box;
-}
-
-.candidate-item-wrapper {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  cursor: pointer;
-  user-select: none;
-}
-
-.candidate-item-wrapper span {
-  font-size: 0.65rem;
-  color: #333;
-  font-weight: bold;
-  line-height: 1;
-}
-
-.candidate-item-wrapper:hover {
-  background-color: #f0f0f0;
-}
+.candidate-grid { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); width: 100%; height: 100%; box-sizing: border-box; }
+.candidate-item-wrapper { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; cursor: pointer; user-select: none; }
+.candidate-item-wrapper span { font-size: 0.65rem; color: #333; font-weight: bold; line-height: 1; }
+.candidate-item-wrapper:hover { background-color: #f0f0f0; }
 </style>

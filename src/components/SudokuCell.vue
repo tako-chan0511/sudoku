@@ -1,6 +1,8 @@
 <template>
   <div
     class="sudoku-cell"
+    :id="`cell-${cell.row}-${cell.col}`"
+    tabindex="0"
     :class="[
       borderClasses,
       {
@@ -11,146 +13,78 @@
         'highlight-secondary': highlightType === 'secondary'
       }
     ]"
-   @pointerup.prevent.stop="handleMainCellClick"       
+    @pointerup.prevent.stop="selectCellOnly"
   >
     <div v-if="cell.value !== 0" class="value-display-wrapper">
       <span class="value-display">{{ cell.value }}</span>
     </div>
-
-    <div class="candidate-display-area">
+    <div v-if="cell.value === 0" class="candidate-display-area">
       <CandidateGrid
         :autoCandidates="cell.candidates"
         :userCandidates="cell.userCandidates"
-        :isEditable="inputMode === 'thinking' && !cell.isGiven && cell.value === 0"
+        :isEditable="inputMode === 'thinking' && !cell.isGiven"
+        :isTraining="isTraining"
         :cellInfo="cell"
-        :is-training="isTraining"
-        :highlightType="highlightType"
         :hintRemovalApplied="hintRemovalApplied"
         :removalCandidates="removalCandidates"
+        :highlightType="highlightType"
         @toggleCandidate="onToggleCandidate"
+        @selectCell="selectCellOnly"
       />
     </div>
   </div>
 </template>
 
-<script lang="ts" setup>
-import { computed, defineProps, defineEmits, watch } from 'vue';
-import type { Cell, InputMode } from '@/types/sudoku';
+<script setup lang="ts">
+import { defineEmits, defineProps, computed } from 'vue';
+import type { Cell, InputMode, CandidateNumber } from '@/types/sudoku';
 import CandidateGrid from './CandidateGrid.vue';
 
 const props = defineProps<{
   cell: Cell;
-  selectedNumber: number;
   inputMode: InputMode;
   isSelected: boolean;
   isRelated: boolean;
   highlightType: string | null;
   isTraining: boolean;
   hintRemovalApplied: boolean;
-  removalCandidates: (1|2|3|4|5|6|7|8|9)[];
+  removalCandidates: number[];
 }>();
 
 const emits = defineEmits<{
-  (e: 'selectCell', payload: Cell): void;
-  (e: 'inputCell', payload: { row: number; col: number; val: number }): void;
+  (e: 'selectCell', cell: Cell): void;
   (e: 'toggleCandidate', payload: { row: number; col: number; candidate: number }): void;
 }>();
 
-// Debug log for highlight changes
-watch(() => props.highlightType, (newVal) => {
-  if (newVal) {
-    console.log(`[SudokuCell] (${props.cell.row}, ${props.cell.col}) highlight changed to [${newVal}]`);
-  }
-});
-
 const borderClasses = computed(() => {
-  const r = props.cell.row;
-  const c = props.cell.col;
+  const { row, col } = props.cell;
   return {
-    'border-left-thick': c % 3 === 0,
-    'border-top-thick': r % 3 === 0,
-    'border-right-thick': c % 3 === 2,
-    'border-bottom-thick': r % 3 === 2,
+    'border-top-thick': row > 0 && row % 3 === 0,
+    'border-left-thick': col > 0 && col % 3 === 0,
   };
 });
 
-function handleMainCellClick() {
+function selectCellOnly() {
   emits('selectCell', props.cell);
 }
 
 function onToggleCandidate(candidate: number) {
-  emits('toggleCandidate', {
-    row: props.cell.row,
-    col: props.cell.col,
-    candidate,
-  });
+  emits('toggleCandidate', { row: props.cell.row, col: props.cell.col, candidate });
 }
 </script>
 
 <style scoped>
-.sudoku-cell {
-  width: 100%;
-  height: 100%;
-  box-sizing: border-box;
-  position: relative;
-  background-color: #fff;
-  border: 1px solid #999;
-  cursor: pointer;
-  user-select: none;
-  transition: background-color 0.2s ease-in-out;
- /* 既存スタイルの下に追加 */
-  touch-action: manipulation;      /* タップを即座に処理、スクロールの競合を避ける */
-  -webkit-tap-highlight-color: transparent; /* タップハイライト無効 */
-}
-.sudoku-cell.is-related {
-  background-color: #e0f2f7;
-}
-.sudoku-cell.highlight-secondary {
-  background-color: rgba(173, 216, 230, 0.7) !important;
-}
-.sudoku-cell.highlight-primary {
-  background-color: rgba(255, 255, 0, 0.7) !important;
-}
-.sudoku-cell.is-selected {
-  border: 2px solid #007ACC !important;
-  box-shadow: 0 0 5px rgba(0, 122, 204, 0.5);
-  background-color: #b0e0e6;
-}
+/* styleタグの中身は変更なし */
+.sudoku-cell { width: 100%; height: 100%; box-sizing: border-box; position: relative; background-color: #fff; border: 1px solid #999; cursor: pointer; user-select: none; transition: background-color 0.2s ease-in-out; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.sudoku-cell.is-related { background-color: #e0f2f7; }
+.sudoku-cell.highlight-secondary { background-color: rgba(173, 216, 230, 0.7) !important; }
+.sudoku-cell.highlight-primary { background-color: rgba(255, 255, 0, 0.7) !important; }
+.sudoku-cell.is-selected { border: 2px solid #007ACC !important; box-shadow: 0 0 5px rgba(0, 122, 204, 0.5); background-color: #b0e0e6; }
 .border-left-thick { border-left: 2px solid #444 !important; }
 .border-top-thick { border-top: 2px solid #444 !important; }
-.border-right-thick { border-right: 2px solid #444 !important; }
-.border-bottom-thick { border-bottom: 2px solid #444 !important; }
-.given-cell {
-  background-color: #EFEFEF;
-  cursor: default;
-}
-.given-cell .value-display {
-  color: #333;
-  font-weight: bold;
-}
-.value-display-wrapper {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2;
-  background-color: transparent;
-}
-.value-display {
-  font-size: 1.5rem;
-  font-weight: bold;
-  color: #005a9c;
-}
-.candidate-display-area {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 1;
-}
+.given-cell { background-color: #EFEFEF; cursor: default; }
+.given-cell .value-display { color: #333; font-weight: bold; }
+.value-display-wrapper { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; z-index: 2; background-color: transparent; }
+.value-display { font-size: 1.5rem; font-weight: bold; color: #005a9c; }
+.candidate-display-area { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
 </style>
