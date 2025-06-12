@@ -86,6 +86,17 @@ export function useSudoku(initial?: (0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9)[][])
     if (cell.isGiven || cell.value !== 0) return;
     cell.userCandidates[n] = !cell.userCandidates[n];
   }
+  
+  function setCellCandidates(r: number, c: number, candidatesToSet: CandidateNumber[]) {
+    const cell = board.value[r][c];
+    if (cell) {
+      const newCandidates = cloneCandidates(EMPTY_CANDIDATES);
+      candidatesToSet.forEach(n => {
+        newCandidates[n] = true;
+      });
+      cell.candidates = newCandidates;
+    }
+  }
 
   function resetBoard() {
     initBoard();
@@ -95,5 +106,5 @@ export function useSudoku(initial?: (0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9)[][])
 
   const flatCells = computed(() => board.value.flat());
 
-  return { board, flatCells, setCellValue, toggleUserCandidate, resetBoard, updateAllCandidates };
+  return { board, flatCells, setCellValue, toggleUserCandidate, resetBoard, updateAllCandidates, setCellCandidates };
 }

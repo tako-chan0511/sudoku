@@ -34,19 +34,20 @@ const emits = defineEmits<{
 }>();
 
 const displayCandidatesMap = computed(() => {
-  // 通常モードでは、ユーザー候補のみ表示
+  // 通常モードではユーザー候補のみ表示
   if (!props.isTraining) {
     const hasUserCandidates = Object.values(props.userCandidates).some(v => v);
-    return hasUserCandidates ? props.userCandidates : EMPTY_CANDIDATES; // 未入力なら何も表示しない
+    return hasUserCandidates ? props.userCandidates : EMPTY_CANDIDATES;
   }
   
   // --- ここからトレーニングモードのロジック ---
-  // ヒント適用前は、自動候補（prefilledCandidatesで上書き済みのもの）を表示
+  
+  // ヒント適用前は、自動候補を表示
   if (!props.hintRemovalApplied) {
     return props.autoCandidates;
   }
   
-  // ヒント適用後、かつ secondary ハイライトのセルは、候補をフィルタリングして表示
+  // ヒント適用後で、かつ secondary ハイライトのセルは、候補をフィルタリングして表示
   if (props.highlightType === 'secondary') {
     const filtered: Candidates = { ...props.autoCandidates };
     props.removalCandidates.forEach(n => {
@@ -57,7 +58,7 @@ const displayCandidatesMap = computed(() => {
     return filtered;
   }
   
-  // それ以外のセル（primaryなど）は、そのまま自動候補を表示
+  // それ以外のトレーニング中のセル（primaryなど）は、そのまま自動候補を表示
   return props.autoCandidates;
 });
 
