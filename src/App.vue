@@ -71,7 +71,7 @@
 
       <button
         v-if="gameMode === 'normal'"
-        @click="() => clearPuzzle(true)"
+        @click="() => clearPuzzle()"
         style="margin-left: 8px"
       >
         空盤面
@@ -211,7 +211,7 @@ import { makePuzzleByDifficulty } from "@/utils/puzzleGenerator";
 import { trainingPuzzles, type TrainingTechnique } from "@/utils/trainingPuzzles";
 import { nextTick, onMounted, onBeforeUnmount, watch } from "vue";
 
-// --- Type Definitions (ビルドエラー修正) ---
+// --- Type Definitions ---
 type Difficulty = "easy" | "medium" | "hard";
 
 // --- State & Refs ---
@@ -319,14 +319,13 @@ function startTraining(technique: TrainingTechnique) {
   currentTrainingTechnique.value = technique;
   highlightedCells.value = [];
   inputMode.value = "thinking";
-  hintRemovalApplied.value = false;
 
   const puzzleForSudoku = technique.puzzle.map((row) => row.map((cell) => cell as SudokuValue));
   gamePuzzle = puzzleForSudoku;
 
   const api = useSudoku(gamePuzzle);
   board.value = api.board.value;
-  // flatCells.value = api.flatCells.value; // ビルドエラーのため削除
+  flatCells = api.flatCells;
   setCellValue = api.setCellValue;
   toggleUserCandidate = api.toggleUserCandidate;
   resetBoard = api.resetBoard;
@@ -443,7 +442,7 @@ function startGame() {
   
   const api = useSudoku(gamePuzzle);
   board.value = api.board.value;
-  flatCells.value = api.flatCells.value;
+  flatCells = api.flatCells;
   setCellValue = api.setCellValue;
   toggleUserCandidate = api.toggleUserCandidate;
   resetBoard = api.resetBoard;
@@ -460,7 +459,7 @@ function clearPuzzle(selectDefaultCell: boolean = true) {
   gamePuzzle = Array.from({ length: 9 }, () => Array(9).fill(0) as SudokuValue[]);
   const api = useSudoku(gamePuzzle);
   board.value = api.board.value;
-  flatCells.value = api.flatCells.value;
+  flatCells = api.flatCells;
   setCellValue = api.setCellValue;
   toggleUserCandidate = api.toggleUserCandidate;
   resetBoard = api.resetBoard;
@@ -479,7 +478,7 @@ function resetAll() {
   highlightedCells.value = [];
   const api = useSudoku(gamePuzzle as SudokuValue[][]);
   board.value = api.board.value;
-  flatCells.value = api.flatCells.value;
+  flatCells = api.flatCells;
   setCellValue = api.setCellValue;
   toggleUserCandidate = api.toggleUserCandidate;
   resetBoard = api.resetBoard;
@@ -637,7 +636,7 @@ function loadPuzzle(id: string) {
 
   let newUseSudokuApi = useSudoku(newGamePuzzle);
   board.value = newUseSudokuApi.board.value;
-  flatCells.value = newUseSudokuApi.flatCells.value;
+  flatCells = newUseSudokuApi.flatCells;
   setCellValue = newUseSudokuApi.setCellValue;
   toggleUserCandidate = newUseSudokuApi.toggleUserCandidate;
   resetBoard = newUseSudokuApi.resetBoard;
