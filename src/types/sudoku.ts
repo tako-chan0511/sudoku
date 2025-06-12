@@ -60,3 +60,7 @@ export interface SavedPuzzle {
   boardData: SavedCellData[][]; // 9x9の盤面データ
   difficulty: "easy" | "medium" | "hard"; // 保存時の難易度
 }
+
+export type SudokuValue = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+
+export type CandidateNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
