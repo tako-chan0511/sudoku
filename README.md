@@ -10,4 +10,6 @@ Learn more about the recommended Project Setup and IDE Support in the [Vue Docs 
 詳細は [環境構築と実装と実装手順はこちら](docs/ENVIRONMENTS.md) をご覧ください
 
 詳細は [TIPS1](docs/操作性改善知見.md) をご覧ください
+
 詳細は [TIPS2](docs/Tips_20250612.md) をご覧ください
+詳細は [TypeScript型チェックTIPS](docs/Typescript型チェックTips.md) をご覧ください
