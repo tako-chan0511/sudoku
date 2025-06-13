@@ -61,6 +61,10 @@
       <button v-if="gameMode === 'normal'" @click="startGame">
         ゲーム開始
       </button>
+      <!-- ★★★ 新機能ボタンの追加 ★★★ -->
+      <button v-if="gameMode === 'normal'" @click="startGameWithSupport" style="margin-left: 8px;">
+        ゲーム開始 (サポート付き)
+      </button>
       <button
         v-if="gameMode === 'training' && currentTrainingTechnique"
         @click="showTechniqueHint"
@@ -71,7 +75,7 @@
 
       <button
         v-if="gameMode === 'normal'"
-        @click="() => clearPuzzle()"
+        @click="clearPuzzle"
         style="margin-left: 8px"
       >
         空盤面
@@ -117,10 +121,11 @@
         :key="`${cell.row}-${cell.col}`"
         :cell="cell"
         :inputMode="inputMode"
-        :is-selected="
+        :selectedNumber="selectedNumber"
+        :isSelected="
           selectedCell?.row === cell.row && selectedCell?.col === cell.col
         "
-        :is-related="isRelatedCell(cell)"
+        :isRelated="isRelatedCell(cell)"
         :highlight-type="getHighlightType(cell)"
         :is-training="gameMode === 'training'"
         :hint-removal-applied="hintRemovalApplied"
@@ -319,12 +324,8 @@ function handleToggleCandidate(payload: {
   col: number;
   candidate: CandidateNumber;
 }) {
-  // 1. 候補入力モードでないなら無視
   if (inputMode.value !== "thinking") return;
-
   const { row, col, candidate } = payload;
-
-  // 2. 未選択セル or 別セルのクリック → 「選択のみ」して終わり
   if (
     !selectedCell.value ||
     selectedCell.value.row !== row ||
@@ -336,11 +337,9 @@ function handleToggleCandidate(payload: {
     }
     return;
   }
-
-  // 3. 同じセルを再びクリック → 候補トグル
   toggleUserCandidate(row, col, candidate);
 }
-// ★★★ 修正点②：トレーニングモードへの移行処理 ★★★
+
 function setTrainingMode() {
   gameMode.value = "training";
   currentTrainingTechnique.value = null;
@@ -364,7 +363,7 @@ function startTraining(technique: TrainingTechnique) {
 
   const api = useSudoku(gamePuzzle);
   board.value = api.board.value;
-  flatCells = api.flatCells; // エラーのため削除
+  flatCells.value = api.flatCells.value;
   setCellValue = api.setCellValue;
   toggleUserCandidate = api.toggleUserCandidate;
   resetBoard = api.resetBoard;
@@ -414,7 +413,6 @@ function getHighlightType(cell: Cell): string | null {
   return secondary ? "secondary" : null;
 }
 
-// ★★★ 修正点①：キーボード入力処理 ★★★
 function handleKeyDown(event: KeyboardEvent) {
   if (event.key === " " || event.key === "Spacebar") {
     event.preventDefault();
@@ -432,24 +430,11 @@ function handleKeyDown(event: KeyboardEvent) {
     newCol = selectedCell.value.col,
     moved = false;
   switch (event.key) {
-    case "ArrowUp":
-      newRow = Math.max(0, newRow - 1);
-      moved = true;
-      break;
-    case "ArrowDown":
-      newRow = Math.min(8, newRow + 1);
-      moved = true;
-      break;
-    case "ArrowLeft":
-      newCol = Math.max(0, newCol - 1);
-      moved = true;
-      break;
-    case "ArrowRight":
-      newCol = Math.min(8, newCol + 1);
-      moved = true;
-      break;
-    case "Backspace":
-    case "Delete":
+    case "ArrowUp": newRow = Math.max(0, newRow - 1); moved = true; break;
+    case "ArrowDown": newRow = Math.min(8, newRow + 1); moved = true; break;
+    case "ArrowLeft": newCol = Math.max(0, newCol - 1); moved = true; break;
+    case "ArrowRight": newCol = Math.min(8, newCol + 1); moved = true; break;
+    case "Backspace": case "Delete":
       if (!selectedCell.value.isGiven && selectedCell.value.value !== 0) {
         onInputCell({ row: newRow, col: newCol, val: 0 });
         event.preventDefault();
@@ -471,15 +456,7 @@ function handleKeyDown(event: KeyboardEvent) {
         }
       }
       return;
-    case "1":
-    case "2":
-    case "3":
-    case "4":
-    case "5":
-    case "6":
-    case "7":
-    case "8":
-    case "9":
+    case "1": case "2": case "3": case "4": case "5": case "6": case "7": case "8": case "9":
       onNumberPicked(parseInt(event.key));
       event.preventDefault();
       return;
@@ -525,7 +502,7 @@ function startGame() {
 
   const api = useSudoku(gamePuzzle);
   board.value = api.board.value;
-  flatCells = api.flatCells;
+  flatCells.value = api.flatCells.value;
   setCellValue = api.setCellValue;
   toggleUserCandidate = api.toggleUserCandidate;
   resetBoard = api.resetBoard;
@@ -537,6 +514,26 @@ function startGame() {
   });
 }
 
+// ★★★ 新機能のための関数 ★★★
+function startGameWithSupport() {
+  startGame(); // まず通常のゲーム開始処理を呼び出す
+  
+  // ゲーム開始処理が終わった後で候補を表示する
+  nextTick(() => {
+    inputMode.value = 'thinking'; // 候補入力モードに切り替え
+    flatCells.value.forEach(cell => {
+      if (cell.value === 0) {
+        Object.entries(cell.candidates).forEach(([num, isPossible]) => {
+          if (isPossible) {
+            toggleUserCandidate(cell.row, cell.col, parseInt(num) as CandidateNumber);
+          }
+        });
+      }
+    });
+  });
+}
+
+
 function clearPuzzle(selectDefaultCell: boolean = true) {
   errorMessage.value = "";
   gamePuzzle = Array.from(
@@ -545,7 +542,7 @@ function clearPuzzle(selectDefaultCell: boolean = true) {
   );
   const api = useSudoku(gamePuzzle);
   board.value = api.board.value;
-  flatCells = api.flatCells;
+  flatCells.value = api.flatCells.value;
   setCellValue = api.setCellValue;
   toggleUserCandidate = api.toggleUserCandidate;
   resetBoard = api.resetBoard;
@@ -565,7 +562,7 @@ function resetAll() {
   highlightedCells.value = [];
   const api = useSudoku(gamePuzzle as SudokuValue[][]);
   board.value = api.board.value;
-  flatCells = api.flatCells;
+  flatCells.value = api.flatCells.value;
   setCellValue = api.setCellValue;
   toggleUserCandidate = api.toggleUserCandidate;
   resetBoard = api.resetBoard;
@@ -609,94 +606,50 @@ function onSelectCellFromBoard(cell: Cell) {
 }
 
 function isConflict(row: number, col: number, val: number): boolean {
-  // デバッグログ：行・列・ブロックの現在値を出力
-  console.log(
-    `isConflict check row=${row}, col=${col}, val=${val}`,
-    'rowValues=', board.value[row].map(c => c.value),
-    'colValues=', board.value.map(r => r[col].value),
-    'blockValues=',
-    (() => {
-      const vals: number[] = [];
-      const br = Math.floor(row / 3) * 3;
-      const bc = Math.floor(col / 3) * 3;
-      for (let i = br; i < br + 3; i++) {
-        for (let j = bc; j < bc + 3; j++) {
-          vals.push(board.value[i][j].value);
-        }
-      }
-      return vals;
-    })()
-  );
-
-  // 行チェック（同じ行に同じ値がないか）
   for (let c = 0; c < 9; c++) {
     if (c !== col && board.value[row][c].value === val) {
       return true;
     }
   }
-
-  // 列チェック（同じ列に同じ値がないか）
   for (let r = 0; r < 9; r++) {
     if (r !== row && board.value[r][col].value === val) {
       return true;
     }
   }
-
-  // 3x3 ブロックチェック
   const br = Math.floor(row / 3) * 3;
   const bc = Math.floor(col / 3) * 3;
   for (let r_block = br; r_block < br + 3; r_block++) {
     for (let c_block = bc; c_block < bc + 3; c_block++) {
-      // 自身のマスは除外
-      if ((r_block !== row || c_block !== col) &&
-          board.value[r_block][c_block].value === val) {
+      if (
+        (r_block !== row || c_block !== col) &&
+        board.value[r_block][c_block].value === val
+      ) {
         return true;
       }
     }
   }
-
-  // 重複なし
   return false;
 }
-
 
 function onInputCell(
   { row, col, val }: { row: number; col: number; val: number }
 ) {
-  // デバッグログ
-  console.log(
-    `onInputCell called row=${row}, col=${col}, val=${val}, ` +
-    `selected=(${selectedCell.value?.row},${selectedCell.value?.col}), ` +
-    `mode=${inputMode.value}`
-  );
-
-  // 選択なし or 固定セルは処理しない
   if (!selectedCell.value || selectedCell.value.isGiven) return;
-
-  // メッセージクリア
   errorMessage.value = "";
-
-  // ０（クリア）ならそのまま
   if (val === 0) {
     setCellValue(row, col, 0);
     return;
   }
-
-  // 通常モード（confirm）の値確定
   if (inputMode.value === "confirm") {
-    // 重複チェック
     if (isConflict(row, col, val)) {
       errorMessage.value = `重複: (${row + 1},${col + 1}) に ${val} は置けません`;
       return;
     }
     setCellValue(row, col, val as SudokuValue);
-
-  // 候補入力モード（thinking）
   } else {
     toggleUserCandidate(row, col, val as CandidateNumber);
   }
 }
-
 
 function generateUUID(): string {
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
@@ -786,7 +739,7 @@ function loadPuzzle(id: string) {
 
   let newUseSudokuApi = useSudoku(newGamePuzzle);
   board.value = newUseSudokuApi.board.value;
-  flatCells = newUseSudokuApi.flatCells;
+  flatCells.value = newUseSudokuApi.flatCells.value;
   setCellValue = newUseSudokuApi.setCellValue;
   toggleUserCandidate = newUseSudokuApi.toggleUserCandidate;
   resetBoard = newUseSudokuApi.resetBoard;
