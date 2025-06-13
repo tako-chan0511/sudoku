@@ -58,13 +58,16 @@
     </div>
 
     <div class="init-buttons">
-      <button v-if="gameMode === 'normal'" @click="startGame">
-        ゲーム開始
-      </button>
-      <!-- ★★★ 新機能ボタンの追加 ★★★ -->
-      <button v-if="gameMode === 'normal'" @click="startGameWithSupport" style="margin-left: 8px;">
-        ゲーム開始 (サポート付き)
-      </button>
+       <!-- ★★★ 修正点: 開始ボタンのグループ化とアクティブクラスの適用 ★★★ -->
+      <div class="start-group" v-if="gameMode === 'normal'">
+        <button @click="startGame" :class="{ active: activeStartMode === 'normal' }">
+          ゲーム開始
+        </button>
+        <button @click="startGameWithSupport" :class="{ active: activeStartMode === 'support' }">
+          サポート付き
+        </button>
+      </div>
+
       <button
         v-if="gameMode === 'training' && currentTrainingTechnique"
         @click="showTechniqueHint"
@@ -237,6 +240,9 @@ const LOCAL_STORAGE_KEY = "sudokuSavedPuzzles";
 const modalPosition = ref({ x: 0, y: 0 });
 const isDragging = ref(false);
 let dragOffset = { x: 0, y: 0 };
+
+// ★★★ 開始モードの状態を管理する新しいRef ★★★
+const activeStartMode = ref<'normal' | 'support'>('normal');
 
 let gamePuzzle: SudokuValue[][] = Array.from({ length: 9 }, () =>
   Array(9).fill(0)
@@ -492,6 +498,7 @@ function setDifficulty(diff: Difficulty) {
 }
 
 function startGame() {
+  activeStartMode.value = 'normal'; // ★★★ 状態を更新
   gameMode.value = "normal";
   errorMessage.value = "";
   currentTrainingTechnique.value = null;
@@ -516,6 +523,7 @@ function startGame() {
 
 // ★★★ 新機能のための関数 ★★★
 function startGameWithSupport() {
+  activeStartMode.value = 'support'; // ★★★ 状態を更新
   startGame(); // まず通常のゲーム開始処理を呼び出す
   
   // ゲーム開始処理が終わった後で候補を表示する
@@ -535,6 +543,7 @@ function startGameWithSupport() {
 
 
 function clearPuzzle(selectDefaultCell: boolean = true) {
+  activeStartMode.value = 'normal'; // ★★★ 状態を更新
   errorMessage.value = "";
   gamePuzzle = Array.from(
     { length: 9 },
@@ -985,5 +994,35 @@ function deletePuzzle(id: string) {
 .training-select select {
   padding: 6px;
   font-size: 1rem;
+}
+/* ★★★ 開始ボタン用の新しいスタイル ★★★ */
+.start-group {
+  display: inline-flex;
+  border-radius: 4px;
+  overflow: hidden;
+  vertical-align: middle;
+  margin: 4px;
+}
+.start-group button {
+  margin: 0;
+  border: 1px solid #007acc;
+  background-color: #f0f0f0;
+  color: #333;
+  border-right-width: 0;
+  border-radius: 0;
+}
+.start-group button:last-child {
+  border-right-width: 1px;
+  border-top-right-radius: 4px;
+  border-bottom-right-radius: 4px;
+}
+.start-group button:first-child {
+  border-top-left-radius: 4px;
+  border-bottom-left-radius: 4px;
+}
+.start-group button.active {
+  background-color: #007acc;
+  color: #fff;
+  border-color: #007acc;
 }
 </style>
