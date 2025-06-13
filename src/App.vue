@@ -78,7 +78,7 @@
 
       <button
         v-if="gameMode === 'normal'"
-        @click="() => clearPuzzle"
+        @click="() => clearPuzzle(true)"
         style="margin-left: 8px"
       >
         空盤面
