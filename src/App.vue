@@ -244,7 +244,7 @@ const currentDifficulty = ref<Difficulty>("easy");
 const errorMessage = ref("");
 const selectedCell = ref<Cell | null>(null);
 const showSavedPuzzles = ref(false);
-const gameMode = ref<"normal" | "training">("normal");
+const gameMode = ref<'normal' | 'training'>('normal'); // 初期値を 'training' にすることも可能
 const showTechniqueModal = ref(false);
 const currentTrainingTechnique = ref<TrainingTechnique | null>(null);
 const highlightedCells = ref<{ row: number; col: number; type: string }[]>([]);
@@ -275,6 +275,7 @@ let {
 const isModified = ref(false);
 // DevTools にも見えるように明示的に公開
 // defineExpose({ isModified });
+
 
 
 function confirmAndRun(message: string, fn: () => void) {
