@@ -12,7 +12,14 @@
       </button>
       <button
         :class="{ active: gameMode === 'training' }"
-        @click="setTrainingMode()"
+        v-if="gameMode === 'normal'"
+        @click="
+          confirmAndRun(
+            '編集中の内容を破棄してトレーニングモードに入りますか？',
+            setTrainingMode
+          )
+        "
+        style="margin-left: 8px"
       >
         トレーニング
       </button>
@@ -58,12 +65,18 @@
     </div>
 
     <div class="init-buttons">
-       <!-- ★★★ 修正点: 開始ボタンのグループ化とアクティブクラスの適用 ★★★ -->
+      <!-- ★★★ 修正点: 開始ボタンのグループ化とアクティブクラスの適用 ★★★ -->
       <div class="start-group" v-if="gameMode === 'normal'">
-        <button @click="startGame" :class="{ active: activeStartMode === 'normal' }">
+        <button
+          @click="startGame"
+          :class="{ active: activeStartMode === 'normal' }"
+        >
           ゲーム開始
         </button>
-        <button @click="startGameWithSupport" :class="{ active: activeStartMode === 'support' }">
+        <button
+          @click="startGameWithSupport"
+          :class="{ active: activeStartMode === 'support' }"
+        >
           サポート付き
         </button>
       </div>
@@ -78,14 +91,17 @@
 
       <button
         v-if="gameMode === 'normal'"
-        @click="() => clearPuzzle(true)"
+        @click="
+          confirmAndRun('編集中の内容を破棄して空の盤面にしますか？', () =>
+            clearPuzzle(true)
+          )"
         style="margin-left: 8px"
       >
         空盤面
       </button>
       <button
         v-if="gameMode === 'normal'"
-        @click="resetAll"
+        @click="confirmAndRun('編集内容を破棄してリセットしますか？', resetAll)"
         style="margin-left: 8px"
       >
         リセット
@@ -242,7 +258,7 @@ const isDragging = ref(false);
 let dragOffset = { x: 0, y: 0 };
 
 // ★★★ 開始モードの状態を管理する新しいRef ★★★
-const activeStartMode = ref<'normal' | 'support'>('normal');
+const activeStartMode = ref<"normal" | "support">("normal");
 
 let gamePuzzle: SudokuValue[][] = Array.from({ length: 9 }, () =>
   Array(9).fill(0)
@@ -255,6 +271,30 @@ let {
   resetBoard,
   updateAllCandidates,
 } = useSudoku(gamePuzzle);
+
+const isModified = ref(false);
+// DevTools にも見えるように明示的に公開
+// defineExpose({ isModified });
+
+
+function confirmAndRun(message: string, fn: () => void) {
+  console.log("⏰ confirmAndRun invoked, isModified =", isModified.value);
+  if (!isModified.value) {
+    console.log(' → 未編集扱いなので即実行');
+    fn();
+    isModified.value = false;
+  } else {
+    console.log(' → 編集あり、confirm表示');
+    if (window.confirm(message)) {
+      console.log(' → ユーザーOK');
+      fn();
+      isModified.value = false;
+    } else {
+      console.log(' → ユーザーCancel');
+    }
+  }
+}
+
 
 // --- Computed Properties ---
 const sortedSavedPuzzles = computed(() => {
@@ -331,6 +371,7 @@ function handleToggleCandidate(payload: {
   candidate: CandidateNumber;
 }) {
   if (inputMode.value !== "thinking") return;
+  isModified.value = true; // ← 追加
   const { row, col, candidate } = payload;
   if (
     !selectedCell.value ||
@@ -436,11 +477,24 @@ function handleKeyDown(event: KeyboardEvent) {
     newCol = selectedCell.value.col,
     moved = false;
   switch (event.key) {
-    case "ArrowUp": newRow = Math.max(0, newRow - 1); moved = true; break;
-    case "ArrowDown": newRow = Math.min(8, newRow + 1); moved = true; break;
-    case "ArrowLeft": newCol = Math.max(0, newCol - 1); moved = true; break;
-    case "ArrowRight": newCol = Math.min(8, newCol + 1); moved = true; break;
-    case "Backspace": case "Delete":
+    case "ArrowUp":
+      newRow = Math.max(0, newRow - 1);
+      moved = true;
+      break;
+    case "ArrowDown":
+      newRow = Math.min(8, newRow + 1);
+      moved = true;
+      break;
+    case "ArrowLeft":
+      newCol = Math.max(0, newCol - 1);
+      moved = true;
+      break;
+    case "ArrowRight":
+      newCol = Math.min(8, newCol + 1);
+      moved = true;
+      break;
+    case "Backspace":
+    case "Delete":
       if (!selectedCell.value.isGiven && selectedCell.value.value !== 0) {
         onInputCell({ row: newRow, col: newCol, val: 0 });
         event.preventDefault();
@@ -462,7 +516,15 @@ function handleKeyDown(event: KeyboardEvent) {
         }
       }
       return;
-    case "1": case "2": case "3": case "4": case "5": case "6": case "7": case "8": case "9":
+    case "1":
+    case "2":
+    case "3":
+    case "4":
+    case "5":
+    case "6":
+    case "7":
+    case "8":
+    case "9":
       onNumberPicked(parseInt(event.key));
       event.preventDefault();
       return;
@@ -498,7 +560,7 @@ function setDifficulty(diff: Difficulty) {
 }
 
 function startGame() {
-  activeStartMode.value = 'normal'; // ★★★ 状態を更新
+  activeStartMode.value = "normal"; // ★★★ 状態を更新
   gameMode.value = "normal";
   errorMessage.value = "";
   currentTrainingTechnique.value = null;
@@ -519,31 +581,36 @@ function startGame() {
   nextTick(() => {
     selectedCell.value = flatCells.value.length > 0 ? flatCells.value[0] : null;
   });
+  isModified.value = false;
 }
 
 // ★★★ 新機能のための関数 ★★★
 function startGameWithSupport() {
-  activeStartMode.value = 'support'; // ★★★ 状態を更新
+  activeStartMode.value = "support"; // ★★★ 状態を更新
   startGame(); // まず通常のゲーム開始処理を呼び出す
-  
+
   // ゲーム開始処理が終わった後で候補を表示する
   nextTick(() => {
-    inputMode.value = 'thinking'; // 候補入力モードに切り替え
-    flatCells.value.forEach(cell => {
+    inputMode.value = "thinking"; // 候補入力モードに切り替え
+    flatCells.value.forEach((cell) => {
       if (cell.value === 0) {
         Object.entries(cell.candidates).forEach(([num, isPossible]) => {
           if (isPossible) {
-            toggleUserCandidate(cell.row, cell.col, parseInt(num) as CandidateNumber);
+            toggleUserCandidate(
+              cell.row,
+              cell.col,
+              parseInt(num) as CandidateNumber
+            );
           }
         });
       }
     });
   });
+  isModified.value = false;
 }
 
-
 function clearPuzzle(selectDefaultCell: boolean = true) {
-  activeStartMode.value = 'normal'; // ★★★ 状態を更新
+  activeStartMode.value = "normal"; // ★★★ 状態を更新
   errorMessage.value = "";
   gamePuzzle = Array.from(
     { length: 9 },
@@ -564,6 +631,7 @@ function clearPuzzle(selectDefaultCell: boolean = true) {
         flatCells.value.length > 0 ? flatCells.value[0] : null;
     });
   }
+  isModified.value = false;
 }
 
 function resetAll() {
@@ -581,6 +649,7 @@ function resetAll() {
   nextTick(() => {
     selectedCell.value = flatCells.value.length > 0 ? flatCells.value[0] : null;
   });
+  isModified.value = false;
 }
 
 function onNumberPicked(n: number) {
@@ -640,10 +709,19 @@ function isConflict(row: number, col: number, val: number): boolean {
   return false;
 }
 
-function onInputCell(
-  { row, col, val }: { row: number; col: number; val: number }
-) {
+function onInputCell({
+  row,
+  col,
+  val,
+}: {
+  row: number;
+  col: number;
+  val: number;
+}) {
   if (!selectedCell.value || selectedCell.value.isGiven) return;
+  console.log('onInputCell:', row, col, val);
+  isModified.value = true; // ← ここで必ず立てる
+  console.log('→ isModified after set →', isModified.value);  // 追加
   errorMessage.value = "";
   if (val === 0) {
     setCellValue(row, col, 0);
@@ -651,7 +729,9 @@ function onInputCell(
   }
   if (inputMode.value === "confirm") {
     if (isConflict(row, col, val)) {
-      errorMessage.value = `重複: (${row + 1},${col + 1}) に ${val} は置けません`;
+      errorMessage.value = `重複: (${row + 1},${
+        col + 1
+      }) に ${val} は置けません`;
       return;
     }
     setCellValue(row, col, val as SudokuValue);
