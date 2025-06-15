@@ -4,15 +4,12 @@
 
     <!-- モード選択 -->
     <div class="mode-selector">
-      <button
-        :class="{ active: gameMode === 'normal' }"
-        @click="exitTrainingMode()"
-      >
+      <button :class="{ active: isNormalMode }" @click="exitTrainingMode()">
         通常モード
       </button>
       <button
-        :class="{ active: gameMode === 'training' }"
-        v-if="gameMode === 'normal'"
+        v-if="isNormalMode"
+        :class="{ active: isTrainingMode }"
         @click="
           confirmAndRun(
             '編集中の内容を破棄してトレーニングモードに入りますか？',
@@ -26,7 +23,7 @@
     </div>
 
     <!-- 通常モード用の難易度選択 -->
-    <div v-if="gameMode === 'normal'" class="difficulty-buttons">
+    <div v-if="isNormalMode" class="difficulty-buttons">
       <button
         :class="{ active: currentDifficulty === 'easy' }"
         @click="setDifficulty('easy')"
@@ -48,7 +45,7 @@
     </div>
 
     <!-- トレーニングモード用のテクニック選択 -->
-    <div v-if="gameMode === 'training'" class="training-select">
+    <div v-if="isTrainingMode" class="training-select">
       <div v-if="trainingBanner" class="training-banner">
         {{ trainingBanner }}
       </div>
@@ -66,7 +63,7 @@
 
     <div class="init-buttons">
       <!-- ★★★ 修正点: 開始ボタンのグループ化とアクティブクラスの適用 ★★★ -->
-      <div class="start-group" v-if="gameMode === 'normal'">
+      <div class="start-group" v-if="isNormalMode">
         <button
           @click="startGame"
           :class="{ active: activeStartMode === 'normal' }"
@@ -82,7 +79,7 @@
       </div>
 
       <button
-        v-if="gameMode === 'training' && currentTrainingTechnique"
+        v-if="isTrainingMode && currentTrainingTechnique"
         @click="showTechniqueHint"
         class="hint-btn"
       >
@@ -90,17 +87,18 @@
       </button>
 
       <button
-        v-if="gameMode === 'normal'"
+        v-if="isNormalMode"
         @click="
           confirmAndRun('編集中の内容を破棄して空の盤面にしますか？', () =>
             clearPuzzle(true)
-          )"
+          )
+        "
         style="margin-left: 8px"
       >
         空盤面
       </button>
       <button
-        v-if="gameMode === 'normal'"
+        v-if="isNormalMode"
         @click="confirmAndRun('編集内容を破棄してリセットしますか？', resetAll)"
         style="margin-left: 8px"
       >
@@ -110,7 +108,7 @@
         盤面保存
       </button>
       <button
-        v-if="gameMode === 'normal'"
+        v-if="isNormalMode"
         @click="showSavedPuzzles = true"
         style="margin-left: 8px"
       >
@@ -119,14 +117,14 @@
     </div>
     <div class="input-mode-buttons">
       <button
-        v-if="gameMode === 'normal'"
+        v-if="isNormalMode"
         :class="{ active: inputMode === 'thinking' }"
         @click="toggleInputMode"
       >
         候補入力モード
       </button>
     </div>
-    <NumberPicker v-if="gameMode === 'normal'" @pick="onNumberPicked" />
+    <NumberPicker v-if="isNormalMode" @pick="onNumberPicked" />
     <div v-if="errorMessage" class="validation-msg">{{ errorMessage }}</div>
 
     <div v-if="allCorrect" class="congrats">Congratulations！！！</div>
@@ -146,7 +144,7 @@
         "
         :isRelated="isRelatedCell(cell)"
         :highlight-type="getHighlightType(cell)"
-        :is-training="gameMode === 'training'"
+        :is-training="isTrainingMode"
         :hint-removal-applied="hintRemovalApplied"
         :removal-candidates="currentTrainingTechnique?.removalCandidates || []"
         @selectCell="onSelectCellFromBoard"
@@ -214,7 +212,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed } from "vue";
+import { ref, reactive, computed } from "vue";
 import type {
   Cell,
   SavedPuzzle,
@@ -236,6 +234,11 @@ import { nextTick, onMounted, onBeforeUnmount, watch } from "vue";
 
 // --- Type Definitions ---
 type Difficulty = "easy" | "medium" | "hard";
+// --- State & Refs ---
+const state = reactive<{ gameMode: 'normal' | 'training' }>({ gameMode: 'normal' });
+const isNormalMode   = computed(() => state.gameMode === 'normal');
+const isTrainingMode = computed(() => state.gameMode === 'training');
+
 
 // --- State & Refs ---
 const inputMode = ref<"confirm" | "thinking">("confirm");
@@ -244,7 +247,7 @@ const currentDifficulty = ref<Difficulty>("easy");
 const errorMessage = ref("");
 const selectedCell = ref<Cell | null>(null);
 const showSavedPuzzles = ref(false);
-const gameMode = ref<'normal' | 'training'>('normal'); // 初期値を 'training' にすることも可能
+
 const showTechniqueModal = ref(false);
 const currentTrainingTechnique = ref<TrainingTechnique | null>(null);
 const highlightedCells = ref<{ row: number; col: number; type: string }[]>([]);
@@ -276,26 +279,23 @@ const isModified = ref(false);
 // DevTools にも見えるように明示的に公開
 // defineExpose({ isModified });
 
-
-
 function confirmAndRun(message: string, fn: () => void) {
   console.log("⏰ confirmAndRun invoked, isModified =", isModified.value);
   if (!isModified.value) {
-    console.log(' → 未編集扱いなので即実行');
+    console.log(" → 未編集扱いなので即実行");
     fn();
     isModified.value = false;
   } else {
-    console.log(' → 編集あり、confirm表示');
+    console.log(" → 編集あり、confirm表示");
     if (window.confirm(message)) {
-      console.log(' → ユーザーOK');
+      console.log(" → ユーザーOK");
       fn();
       isModified.value = false;
     } else {
-      console.log(' → ユーザーCancel');
+      console.log(" → ユーザーCancel");
     }
   }
 }
-
 
 // --- Computed Properties ---
 const sortedSavedPuzzles = computed(() => {
@@ -329,7 +329,7 @@ const allCorrect = computed(() => {
 });
 
 // --- Watchers ---
-watch(gameMode, (mode) => {
+watch(() => state.gameMode, mode => {
   if (mode === "normal") {
     highlightedCells.value = [];
     hintRemovalApplied.value = false;
@@ -389,7 +389,7 @@ function handleToggleCandidate(payload: {
 }
 
 function setTrainingMode() {
-  gameMode.value = "training";
+  state.gameMode = "training";
   currentTrainingTechnique.value = null;
   trainingBanner.value = null;
   selectedCell.value = null;
@@ -433,7 +433,7 @@ function onSelectTechnique() {
 }
 
 function exitTrainingMode() {
-  gameMode.value = "normal";
+  state.gameMode = "normal";
   currentTrainingTechnique.value = null;
   trainingBanner.value = null;
   highlightedCells.value = [];
@@ -465,7 +465,7 @@ function handleKeyDown(event: KeyboardEvent) {
   if (event.key === " " || event.key === "Spacebar") {
     event.preventDefault();
     event.stopPropagation();
-    if (gameMode.value === "normal") {
+    if (state.gameMode === "normal") {
       toggleInputMode();
     }
     return;
@@ -537,7 +537,7 @@ function handleKeyDown(event: KeyboardEvent) {
 }
 
 function isRelatedCell(cell: Cell): boolean {
-  if (gameMode.value === "training" || !selectedCell.value) return false;
+  if (state.gameMode === "training" || !selectedCell.value) return false;
   if (
     cell.row === selectedCell.value.row &&
     cell.col === selectedCell.value.col
@@ -562,7 +562,7 @@ function setDifficulty(diff: Difficulty) {
 
 function startGame() {
   activeStartMode.value = "normal"; // ★★★ 状態を更新
-  gameMode.value = "normal";
+  state.gameMode = "normal";
   errorMessage.value = "";
   currentTrainingTechnique.value = null;
   highlightedCells.value = [];
@@ -720,9 +720,9 @@ function onInputCell({
   val: number;
 }) {
   if (!selectedCell.value || selectedCell.value.isGiven) return;
-  console.log('onInputCell:', row, col, val);
+  console.log("onInputCell:", row, col, val);
   isModified.value = true; // ← ここで必ず立てる
-  console.log('→ isModified after set →', isModified.value);  // 追加
+  console.log("→ isModified after set →", isModified.value); // 追加
   errorMessage.value = "";
   if (val === 0) {
     setCellValue(row, col, 0);
@@ -820,10 +820,10 @@ function loadPuzzle(id: string) {
   const savedTech = trainingPuzzles.find((t) => t.name === puzzleToLoad.name);
   if (savedTech) {
     currentTrainingTechnique.value = savedTech;
-    gameMode.value = "training";
+    state.gameMode = "training";
   } else {
     currentTrainingTechnique.value = null;
-    gameMode.value = "normal";
+    state.gameMode = "normal";
   }
   highlightedCells.value = [];
 
