@@ -79,39 +79,81 @@ export function generateFullSolution(): number[][] {
 }
 
 /** 与えられ数字を targetGivens 個残すまでランダムにくり抜く（ユニーク解保証付き） */
-export function digHoles(solution: number[][], targetGivens: number): number[][] {
+export function digHoles(
+  solution: number[][],
+  targetGivens: number
+): number[][] {
   const puzzle = solution.map(row => row.slice());
-  const positions = shuffle(Array.from({ length: 81 }, (_, i) => i));
   let givens = 81;
 
-  for (const pos of positions) {
-    if (givens <= targetGivens) break;
+  // マスインデックスの配列
+  let positions = shuffle(Array.from({ length: 81 }, (_, i) => i));
 
-    const r = Math.floor(pos / 9);
-    const c = pos % 9;
+  // targetGivens まで穴を開けられる限り繰り返す
+  while (givens > targetGivens) {
+    let removedThisRound = false;
 
-    if (puzzle[r][c] !== 0) {
+    for (const pos of positions) {
+      if (givens <= targetGivens) break;
+      const r = Math.floor(pos / 9);
+      const c = pos % 9;
+      if (puzzle[r][c] === 0) continue;
+
       const backup = puzzle[r][c];
       puzzle[r][c] = 0;
-
       if (!hasUniqueSolution(puzzle)) {
-        puzzle[r][c] = backup; // 戻す
+        puzzle[r][c] = backup;
       } else {
         givens--;
+        removedThisRound = true;
       }
     }
+
+    // これ以上削除できないならループ打ち切り
+    if (!removedThisRound) break;
+
+    // 次パスでは再度ランダム順で試す
+    positions = shuffle(positions);
   }
 
   return puzzle;
 }
 
 /** 難易度ごとの「与えられ数字数」を設定して生成 */
-export function makePuzzleByDifficulty(diff: 'easy' | 'medium' | 'hard'): number[][] {
-  const full = generateFullSolution();
+export function makePuzzleByDifficulty(
+  diff: 'easy' | 'medium' | 'hard'
+): number[][] {
   const target =
-    diff === 'easy' ? 36 :
+    diff === 'easy'   ? 36 :
     diff === 'medium' ? 30 :
-    24; // hard
+                        17;  // hard を 17 に
 
-  return digHoles(full, target);
+  const MAX_ATTEMPTS = 10
+  ;
+  let bestPuzzle: number[][] | null = null;
+  let bestCount = 81;  // 手がかりの最小（理想は target）
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const full = generateFullSolution();
+    const puzzle = digHoles(full, target);
+    const givens = puzzle.flat().filter((v) => v !== 0).length;
+
+    console.log(`Attempt ${attempt}: ${givens} clues remain`);
+
+    // 目標到達なら即返却
+    if (givens <= target) {
+      console.log(`Reached target in ${attempt} attempts: ${givens} clues`);
+      return puzzle;
+    }
+
+    // ベストスコアを更新
+    if (givens < bestCount) {
+      bestCount = givens;
+      bestPuzzle = puzzle.map((row) => row.slice());
+    }
+  }
+
+  // 目標に届かなかった場合は「最も手がかりを減らせたパズル」を返す
+  console.log(`Failed to reach ${target}. Best was ${bestCount} clues.`);
+  return bestPuzzle!; 
 }
