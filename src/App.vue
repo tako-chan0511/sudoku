@@ -573,8 +573,8 @@ function setDifficulty(diff: Difficulty) {
   currentDifficulty.value = diff;
 }
 
-function startGame() {
-  activeStartMode.value = "normal"; // ★★★ 状態を更新
+function startGameBase() {
+  // activeStartMode.value = "normal"; // ★★★ 状態を更新
   state.gameMode = "normal";
   errorMessage.value = "";
   currentTrainingTechnique.value = null;
@@ -597,12 +597,17 @@ function startGame() {
   });
   isModified.value = false;
 }
+// 通常モードでスタートしたいとき
+function startGame() {
+  activeStartMode.value = "normal"
+  startGameBase()
+}
 
 // ★★★ 新機能のための関数 ★★★
 function startGameWithSupport() {
-  activeStartMode.value = "support"; // ★★★ 状態を更新
+  
   startGame(); // まず通常のゲーム開始処理を呼び出す
-
+  activeStartMode.value = "support"; // ★★★ 状態を更新
   // ゲーム開始処理が終わった後で候補を表示する
   nextTick(() => {
     inputMode.value = "thinking"; // 候補入力モードに切り替え
@@ -648,23 +653,53 @@ function clearPuzzle(selectDefaultCell: boolean = true) {
   isModified.value = false;
 }
 
-function resetAll() {
-  errorMessage.value = "";
-  highlightedCells.value = [];
-  const api = useSudoku(gamePuzzle as SudokuValue[][]);
-  board.value = api.board.value;
-  flatCells = api.flatCells;
-  setCellValue = api.setCellValue;
-  toggleUserCandidate = api.toggleUserCandidate;
-  resetBoard = api.resetBoard;
-  updateAllCandidates = api.updateAllCandidates;
+async function resetAll() {
+  console.log("▶ resetAll called, activeStartMode =", activeStartMode.value)
 
-  selectedNumber.value = 0;
-  nextTick(() => {
-    selectedCell.value = flatCells.value.length > 0 ? flatCells.value[0] : null;
-  });
-  isModified.value = false;
+  // メッセージとハイライトをクリア
+  errorMessage.value = ""
+  highlightedCells.value = []
+
+  // 1️⃣ 元の盤面に戻す
+  resetBoard()
+  updateAllCandidates()
+
+  // 2️⃣ サポート付きなら候補を再度すべて復元
+  if (activeStartMode.value === "support") {
+    console.log("▶ support mode: restoring all candidates")
+    inputMode.value = "thinking"
+    flatCells.value.forEach(cell => {
+      if (cell.value === 0) {
+        Object.entries(cell.candidates).forEach(([num, ok]) => {
+          if (ok) {
+            toggleUserCandidate(cell.row, cell.col, +num as CandidateNumber)
+          }
+        })
+      }
+    })
+  } else {
+    // 通常モードなら確定入力に戻す
+    inputMode.value = "confirm"
+  }
+
+  // 3️⃣ セル選択を先頭に戻す
+  selectedNumber.value = 0
+  await nextTick()
+  selectedCell.value = flatCells.value[0] || null
+
+  // 4️⃣ 編集フラグクリア
+  isModified.value = false
+
+  // 5️⃣ デバッグ
+  console.log(
+    "【DEBUG after resetAll】 empty count:",
+    flatCells.value.filter(c => c.value === 0).length
+  )
+  console.log("inputMode =", inputMode.value)
+  console.log("first cell userCandidates:", flatCells.value[0].userCandidates)
 }
+
+
 
 function onNumberPicked(n: number) {
   errorMessage.value = "";
