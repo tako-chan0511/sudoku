@@ -124,7 +124,12 @@
         候補入力モード
       </button>
     </div>
-    <NumberPicker v-if="isNormalMode" @pick="onNumberPicked" />
+    <NumberPicker
+      v-if="isNormalMode"
+      :selectedCell="selectedCell"
+      :flatCells="flatCells"
+      @pick="onNumberPicked"
+    />
     <div v-if="errorMessage" class="validation-msg">{{ errorMessage }}</div>
 
     <div v-if="allCorrect" class="congrats">Congratulations！！！</div>
@@ -599,13 +604,12 @@ function startGameBase() {
 }
 // 通常モードでスタートしたいとき
 function startGame() {
-  activeStartMode.value = "normal"
-  startGameBase()
+  activeStartMode.value = "normal";
+  startGameBase();
 }
 
 // ★★★ 新機能のための関数 ★★★
 function startGameWithSupport() {
-  
   startGame(); // まず通常のゲーム開始処理を呼び出す
   activeStartMode.value = "support"; // ★★★ 状態を更新
   // ゲーム開始処理が終わった後で候補を表示する
@@ -654,52 +658,50 @@ function clearPuzzle(selectDefaultCell: boolean = true) {
 }
 
 async function resetAll() {
-  console.log("▶ resetAll called, activeStartMode =", activeStartMode.value)
+  console.log("▶ resetAll called, activeStartMode =", activeStartMode.value);
 
   // メッセージとハイライトをクリア
-  errorMessage.value = ""
-  highlightedCells.value = []
+  errorMessage.value = "";
+  highlightedCells.value = [];
 
   // 1️⃣ 元の盤面に戻す
-  resetBoard()
-  updateAllCandidates()
+  resetBoard();
+  updateAllCandidates();
 
   // 2️⃣ サポート付きなら候補を再度すべて復元
   if (activeStartMode.value === "support") {
-    console.log("▶ support mode: restoring all candidates")
-    inputMode.value = "thinking"
-    flatCells.value.forEach(cell => {
+    console.log("▶ support mode: restoring all candidates");
+    inputMode.value = "thinking";
+    flatCells.value.forEach((cell) => {
       if (cell.value === 0) {
         Object.entries(cell.candidates).forEach(([num, ok]) => {
           if (ok) {
-            toggleUserCandidate(cell.row, cell.col, +num as CandidateNumber)
+            toggleUserCandidate(cell.row, cell.col, +num as CandidateNumber);
           }
-        })
+        });
       }
-    })
+    });
   } else {
     // 通常モードなら確定入力に戻す
-    inputMode.value = "confirm"
+    inputMode.value = "confirm";
   }
 
   // 3️⃣ セル選択を先頭に戻す
-  selectedNumber.value = 0
-  await nextTick()
-  selectedCell.value = flatCells.value[0] || null
+  selectedNumber.value = 0;
+  await nextTick();
+  selectedCell.value = flatCells.value[0] || null;
 
   // 4️⃣ 編集フラグクリア
-  isModified.value = false
+  isModified.value = false;
 
   // 5️⃣ デバッグ
   console.log(
     "【DEBUG after resetAll】 empty count:",
-    flatCells.value.filter(c => c.value === 0).length
-  )
-  console.log("inputMode =", inputMode.value)
-  console.log("first cell userCandidates:", flatCells.value[0].userCandidates)
+    flatCells.value.filter((c) => c.value === 0).length
+  );
+  console.log("inputMode =", inputMode.value);
+  console.log("first cell userCandidates:", flatCells.value[0].userCandidates);
 }
-
-
 
 function onNumberPicked(n: number) {
   errorMessage.value = "";
@@ -781,7 +783,9 @@ async function onInputCell({
   } else if (inputMode.value === "confirm") {
     // 確定モード
     if (isConflict(row, col, val)) {
-      errorMessage.value = `重複: (${row + 1},${col + 1}) に ${val} は置けません`;
+      errorMessage.value = `重複: (${row + 1},${
+        col + 1
+      }) に ${val} は置けません`;
       return;
     }
     setCellValue(row, col, val as SudokuValue);
@@ -799,13 +803,13 @@ async function onInputCell({
     toggleUserCandidate(row, col, val as CandidateNumber);
   }
 
-  // —— ここで一度だけリアクティブ更新＆レンダー完了を待つ ——  
+  // —— ここで一度だけリアクティブ更新＆レンダー完了を待つ ——
   await nextTick();
 
   // 最新の状態をログ出力
   console.log(
     "【DEBUG】flatCells values:",
-    flatCells.value.map(c => c.value).join(",")
+    flatCells.value.map((c) => c.value).join(",")
   );
   console.log("allFilled=", allFilled.value);
   console.log("allCorrect=", allCorrect.value);
