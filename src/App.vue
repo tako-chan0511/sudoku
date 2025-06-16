@@ -276,6 +276,9 @@ let {
   updateAllCandidates,
 } = useSudoku(gamePuzzle);
 
+
+
+
 const isModified = ref(false);
 // DevTools にも見えるように明示的に公開
 // defineExpose({ isModified });
@@ -723,6 +726,10 @@ function onInputCell({
   col: number;
   val: number;
 }) {
+  console.log("★★onInputCell★★:", row, col, val);
+  nextTick(() => {
+    console.log('▶ nextTick after setCellValue, allFilled=', allFilled.value);
+  });
   if (!selectedCell.value || selectedCell.value.isGiven) return;
   console.log("onInputCell:", row, col, val);
   isModified.value = true; // ← ここで必ず立てる
@@ -739,7 +746,11 @@ function onInputCell({
       }) に ${val} は置けません`;
       return;
     }
+    // --- 確定入力 ---
     setCellValue(row, col, val as SudokuValue);
+    // ↓ ここで、同じ行列ブロックの val 候補を消す
+    console.log(`✅ 確定: (${row},${col}) に ${val} をセット`);
+    removeCandidatesFromPeers(row, col, val as CandidateNumber);
   } else {
     // —— thinking モード（候補入力）のときだけ追加時にチェック ——
     const cell = board.value[row][col];
@@ -754,7 +765,40 @@ function onInputCell({
     // toggleUserCandidate が追加・削除をやってくれる
     toggleUserCandidate(row, col, val as CandidateNumber);
   }
+  console.log(
+  flatCells.value
+    .filter(c => c.value === 0)
+    .map(c => `(${c.row},${c.col})`)
+);
 }
+
+/** 
+ * row, col で確定した val の候補を、
+ * 同じ行・列・ブロックに残っている userCandidates から消す
+ */
+function removeCandidatesFromPeers(
+  row: number,
+  col: number,
+  val: CandidateNumber
+) {
+  console.log(`🔍 removeCandidatesFromPeers: peer から ${val} を消します (orig: ${row},${col})`);
+  flatCells.value.forEach((cell) => {
+    if (cell.row === row && cell.col === col) return;
+    const sameRow = cell.row === row;
+    const sameCol = cell.col === col;
+    const sameBlock =
+      Math.floor(cell.row / 3) === Math.floor(row / 3) &&
+      Math.floor(cell.col / 3) === Math.floor(col / 3);
+    if ((sameRow || sameCol || sameBlock) && cell.userCandidates[val]) {
+      console.log(
+        `  → cell(${cell.row},${cell.col}) に残っていた候補 ${val} を消去`
+      );
+      cell.userCandidates[val] = false;
+    }
+  });
+}
+
+
 
 function generateUUID(): string {
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
