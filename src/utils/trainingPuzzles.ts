@@ -175,17 +175,29 @@ const uniqueRectangleTechnique: TrainingTechnique = {
 // 8. バックトラッキング (Guess & Check)
 // =================================================================
 const backtrackingPuzzle: Board = [
-  [1,2,3,4,5,6,7,8,9],[4,5,6,7,8,9,1,2,3],[7,8,9,1,2,3,4,5,6],
-  [2,3,4,5,6,7,8,9,1],[5,6,7,8,0,1,2,3,4],[8,9,1,2,3,4,5,6,7],
-  [3,4,5,6,7,8,9,1,2],[6,7,8,9,1,2,3,4,5],[9,1,2,3,4,5,6,7,8]
+  [0,6,0,0,0,0,0,0,7],
+  [7,4,3,5,0,9,6,0,0],
+  [0,1,2,0,3,0,0,4,9],
+  [6,0,0,2,1,8,4,7,3],
+  [3,8,7,4,9,5,0,0,0],
+  [1,2,4,0,6,0,9,8,5],
+  [0,0,8,0,7,0,0,0,6],
+  [0,0,6,9,0,0,7,0,8],
+  [0,7,1,0,0,0,2,0,4]
 ];
 const backtrackingTechnique: TrainingTechnique = {
   key: 'backtracking',
   name: 'バックトラッキング (Guess & Check)',
-  description: '論理的に進まない場合、セル (4,4) の {2,3} のどちらかを仮置きして進めます。仮置き後に矛盾が出たら、もう一方の数字を試しましょう。',
+  description: '論理的進まない場合、7に着目してセル (2,3)(2,5)(5,3)(5,5)に7が矩形に存在する場合、2種類の7の可能性がある、解がユニークなので一つは必ず失敗する。仮置きに失敗した方を排除可能。',
   puzzle: backtrackingPuzzle,
-  highlight: [ { row:4, col:4, type:'primary' } ],
-  removalCandidates: []
+  highlight: 
+  [ { row:2, col:5, type:'primary' } ,
+    { row:5, col:3, type:'primary' } ,
+    { row:5, col:5, type:'primary' } ,
+    { row:2, col:3, type:'primary' } ,
+   
+  ],
+  removalCandidates: [8],
 };
 
 
