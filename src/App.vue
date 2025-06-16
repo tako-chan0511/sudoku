@@ -235,10 +235,11 @@ import { nextTick, onMounted, onBeforeUnmount, watch } from "vue";
 // --- Type Definitions ---
 type Difficulty = "easy" | "medium" | "hard";
 // --- State & Refs ---
-const state = reactive<{ gameMode: 'normal' | 'training' }>({ gameMode: 'normal' });
-const isNormalMode   = computed(() => state.gameMode === 'normal');
-const isTrainingMode = computed(() => state.gameMode === 'training');
-
+const state = reactive<{ gameMode: "normal" | "training" }>({
+  gameMode: "normal",
+});
+const isNormalMode = computed(() => state.gameMode === "normal");
+const isTrainingMode = computed(() => state.gameMode === "training");
 
 // --- State & Refs ---
 const inputMode = ref<"confirm" | "thinking">("confirm");
@@ -329,13 +330,16 @@ const allCorrect = computed(() => {
 });
 
 // --- Watchers ---
-watch(() => state.gameMode, mode => {
-  if (mode === "normal") {
-    highlightedCells.value = [];
-    hintRemovalApplied.value = false;
-    showTechniqueModal.value = false;
+watch(
+  () => state.gameMode,
+  (mode) => {
+    if (mode === "normal") {
+      highlightedCells.value = [];
+      hintRemovalApplied.value = false;
+      showTechniqueModal.value = false;
+    }
   }
-});
+);
 
 // --- Lifecycle Hooks ---
 onMounted(() => {
@@ -737,6 +741,17 @@ function onInputCell({
     }
     setCellValue(row, col, val as SudokuValue);
   } else {
+    // —— thinking モード（候補入力）のときだけ追加時にチェック ——
+    const cell = board.value[row][col];
+    const already = cell.userCandidates[val as CandidateNumber];
+    if (!already) {
+      // 「まだ入っていない」なら追加なのでチェックを入れる
+      if (isConflict(row, col, val)) {
+        errorMessage.value = `重複候補: 行・列・ブロックに既に ${val} があります`;
+        return;
+      }
+    }
+    // toggleUserCandidate が追加・削除をやってくれる
     toggleUserCandidate(row, col, val as CandidateNumber);
   }
 }
