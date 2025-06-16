@@ -326,29 +326,31 @@ const allCorrect = computed(() => {
   return true;
 });
 
-watch(
-  () => ({ f: allFilled.value, c: allCorrect.value }),
-  ({ f, c }) => {
-    if (f && c) {
-      alert("Congratulations!!!");
-    }
-  },
-  { flush: "post" }
-);
+// // ここをオブジェクト返しから配列返しに
+
+//   [allFilled, allCorrect],
+//   ([f, c]) => {
+//     console.log("🥷 watch fired:", { f, c })
+//     if (f && c) {
+//       alert("Congratulations!!!")
+//     }
+//   },
+//   { flush: "post" }
+// )
 
 // --- Watchers ---
-watch(
-  () => state.gameMode,
-  (mode) => {
-    if (mode === "normal") {
-      highlightedCells.value = [];
-      hintRemovalApplied.value = false;
-      showTechniqueModal.value = false;
-    }
-  }
-);
+// watch(
+//   () => state.gameMode,
+//   (mode) => {
+//     if (mode === "normal") {
+//       highlightedCells.value = [];
+//       hintRemovalApplied.value = false;
+//       showTechniqueModal.value = false;
+//     }
+//   }
+// );
 
-// --- Lifecycle Hooks ---
+// --- Lifecyclewatch( Hooks ---
 onMounted(() => {
   window.addEventListener("mousemove", onMouseMove);
   window.addEventListener("mouseup", onMouseUp);
@@ -721,6 +723,7 @@ function isConflict(row: number, col: number, val: number): boolean {
   return false;
 }
 
+// 入力時のメイン処理を async 化
 async function onInputCell({
   row,
   col,
@@ -732,56 +735,39 @@ async function onInputCell({
 }) {
   console.log("★★onInputCell★★:", row, col, val);
 
-  // セル未選択 or 問題のセルは編集不可
   if (!selectedCell.value || selectedCell.value.isGiven) return;
 
-  console.log("onInputCell:", row, col, val);
-  isModified.value = true; // フラグを立てる
-  console.log("→ isModified after set →", isModified.value);
+  isModified.value = true;
   errorMessage.value = "";
 
-  // 「0」を入れたら消去
   if (val === 0) {
+    // 消去
     setCellValue(row, col, 0);
-    // DOM/リアクティブ更新後にログ
-    await nextTick();
-    console.log(
-      "【DEBUG】flatCells values:",
-      flatCells.value.map(c => c.value).join(",")
-    );
-    console.log("allFilled=", allFilled.value);
-    console.log("allCorrect=", allCorrect.value);
-    return;
-  }
-
-  if (inputMode.value === "confirm") {
-    // 確定入力時の重複チェック
+  } else if (inputMode.value === "confirm") {
+    // 確定モード
     if (isConflict(row, col, val)) {
       errorMessage.value = `重複: (${row + 1},${col + 1}) に ${val} は置けません`;
       return;
     }
-    // --- 確定入力 ---
     setCellValue(row, col, val as SudokuValue);
     console.log(`✅ 確定: (${row},${col}) に ${val} をセット`);
     removeCandidatesFromPeers(row, col, val as CandidateNumber);
-
   } else {
-    // — thinking（候補入力）モード: 追加時だけ重複チェック —
+    // 候補入力モード
     const cell = board.value[row][col];
     const already = cell.userCandidates[val as CandidateNumber];
-    if (!already) {
-      // まだ入っていない＝追加なのでチェック
-      if (isConflict(row, col, val)) {
-        errorMessage.value = `重複候補: 行・列・ブロックに既に ${val} があります`;
-        return;
-      }
+    // 追加操作のときだけ重複チェック
+    if (!already && isConflict(row, col, val)) {
+      errorMessage.value = `重複候補: 行・列・ブロックに既に ${val} があります`;
+      return;
     }
-    // 候補の追加／削除を実行
     toggleUserCandidate(row, col, val as CandidateNumber);
   }
 
-  // 最後にリアクティブ更新後の状態をログ
+  // —— ここで一度だけリアクティブ更新＆レンダー完了を待つ ——  
   await nextTick();
+
+  // 最新の状態をログ出力
   console.log(
     "【DEBUG】flatCells values:",
     flatCells.value.map(c => c.value).join(",")
@@ -790,6 +776,17 @@ async function onInputCell({
   console.log("allCorrect=", allCorrect.value);
 }
 
+// allFilled & allCorrect の両方が true になったらアラート
+watch(
+  [allFilled, allCorrect],
+  ([filled, correct]) => {
+    console.log("🎯 watch fired:", { filled, correct });
+    if (filled && correct) {
+      alert("Congratulations!!!");
+    }
+  },
+  { flush: "post" }
+);
 /**
  * row, col で確定した val の候補を、
  * 同じ行・列・ブロックに残っている userCandidates から消す
