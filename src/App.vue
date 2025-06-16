@@ -128,9 +128,6 @@
     <div v-if="errorMessage" class="validation-msg">{{ errorMessage }}</div>
 
     <div v-if="allCorrect" class="congrats">Congratulations！！！</div>
-    <div v-else-if="allFilled" class="error-msg">
-      間違いがあります。確認してください。
-    </div>
 
     <div class="board-wrapper">
       <SudokuCell
@@ -276,9 +273,6 @@ let {
   updateAllCandidates,
 } = useSudoku(gamePuzzle);
 
-
-
-
 const isModified = ref(false);
 // DevTools にも見えるように明示的に公開
 // defineExpose({ isModified });
@@ -331,6 +325,16 @@ const allCorrect = computed(() => {
   }
   return true;
 });
+
+watch(
+  () => ({ f: allFilled.value, c: allCorrect.value }),
+  ({ f, c }) => {
+    if (f && c) {
+      alert("Congratulations!!!");
+    }
+  },
+  { flush: "post" }
+);
 
 // --- Watchers ---
 watch(
@@ -717,7 +721,7 @@ function isConflict(row: number, col: number, val: number): boolean {
   return false;
 }
 
-function onInputCell({
+async function onInputCell({
   row,
   col,
   val,
@@ -727,52 +731,66 @@ function onInputCell({
   val: number;
 }) {
   console.log("★★onInputCell★★:", row, col, val);
-  nextTick(() => {
-    console.log('▶ nextTick after setCellValue, allFilled=', allFilled.value);
-  });
+
+  // セル未選択 or 問題のセルは編集不可
   if (!selectedCell.value || selectedCell.value.isGiven) return;
+
   console.log("onInputCell:", row, col, val);
-  isModified.value = true; // ← ここで必ず立てる
-  console.log("→ isModified after set →", isModified.value); // 追加
+  isModified.value = true; // フラグを立てる
+  console.log("→ isModified after set →", isModified.value);
   errorMessage.value = "";
+
+  // 「0」を入れたら消去
   if (val === 0) {
     setCellValue(row, col, 0);
+    // DOM/リアクティブ更新後にログ
+    await nextTick();
+    console.log(
+      "【DEBUG】flatCells values:",
+      flatCells.value.map(c => c.value).join(",")
+    );
+    console.log("allFilled=", allFilled.value);
+    console.log("allCorrect=", allCorrect.value);
     return;
   }
+
   if (inputMode.value === "confirm") {
+    // 確定入力時の重複チェック
     if (isConflict(row, col, val)) {
-      errorMessage.value = `重複: (${row + 1},${
-        col + 1
-      }) に ${val} は置けません`;
+      errorMessage.value = `重複: (${row + 1},${col + 1}) に ${val} は置けません`;
       return;
     }
     // --- 確定入力 ---
     setCellValue(row, col, val as SudokuValue);
-    // ↓ ここで、同じ行列ブロックの val 候補を消す
     console.log(`✅ 確定: (${row},${col}) に ${val} をセット`);
     removeCandidatesFromPeers(row, col, val as CandidateNumber);
+
   } else {
-    // —— thinking モード（候補入力）のときだけ追加時にチェック ——
+    // — thinking（候補入力）モード: 追加時だけ重複チェック —
     const cell = board.value[row][col];
     const already = cell.userCandidates[val as CandidateNumber];
     if (!already) {
-      // 「まだ入っていない」なら追加なのでチェックを入れる
+      // まだ入っていない＝追加なのでチェック
       if (isConflict(row, col, val)) {
         errorMessage.value = `重複候補: 行・列・ブロックに既に ${val} があります`;
         return;
       }
     }
-    // toggleUserCandidate が追加・削除をやってくれる
+    // 候補の追加／削除を実行
     toggleUserCandidate(row, col, val as CandidateNumber);
   }
+
+  // 最後にリアクティブ更新後の状態をログ
+  await nextTick();
   console.log(
-  flatCells.value
-    .filter(c => c.value === 0)
-    .map(c => `(${c.row},${c.col})`)
-);
+    "【DEBUG】flatCells values:",
+    flatCells.value.map(c => c.value).join(",")
+  );
+  console.log("allFilled=", allFilled.value);
+  console.log("allCorrect=", allCorrect.value);
 }
 
-/** 
+/**
  * row, col で確定した val の候補を、
  * 同じ行・列・ブロックに残っている userCandidates から消す
  */
@@ -781,7 +799,9 @@ function removeCandidatesFromPeers(
   col: number,
   val: CandidateNumber
 ) {
-  console.log(`🔍 removeCandidatesFromPeers: peer から ${val} を消します (orig: ${row},${col})`);
+  console.log(
+    `🔍 removeCandidatesFromPeers: peer から ${val} を消します (orig: ${row},${col})`
+  );
   flatCells.value.forEach((cell) => {
     if (cell.row === row && cell.col === col) return;
     const sameRow = cell.row === row;
@@ -797,8 +817,6 @@ function removeCandidatesFromPeers(
     }
   });
 }
-
-
 
 function generateUUID(): string {
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
