@@ -2,15 +2,17 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": { "@/*": ["src/*"] },
-    "types": ["vite/client", "node"],
-
-    // ここを追加：
-    "noEmit": true
+    "types": [
+      "vite/client",
+      "node",
+      "vite-plugin-pwa/client"
+    ],
+    "noEmit": true,
+    "moduleResolution": "node"
   },
   "include": [
     "src/**/*.ts",
     "src/**/*.d.ts",
-    "src/**/*.tsx",
     "src/**/*.vue"
   ]
 }
