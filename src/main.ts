@@ -1,6 +1,15 @@
+// src/main.ts
 import { createApp } from 'vue'
-import './style.css'
 import App from './App.vue'
-// import "./index.css"; // Tailwind などを使う場合はここでインポート
+import { registerSW } from 'virtual:pwa-register'   // ← 追加
+
+const updateSW = registerSW({
+  onRegistered(r) {
+    console.log('Service Worker registered:', r)
+  },
+  onRegisterError(err) {
+    console.error('SW registration error:', err)
+  }
+})
 
 createApp(App).mount('#app')
