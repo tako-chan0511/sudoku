@@ -1,4 +1,3 @@
-```markdown
 # Vue 3 + Vite アプリをPWA化する実践ガイド
 
 このガイドでは、既存のVue 3 + Viteで作成されたアプリケーションを、PWA（Progressive Web App）に対応させるための手順と、よくある問題の解決策（Tips）を紹介します。
