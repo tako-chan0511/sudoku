@@ -1,30 +1,50 @@
-Vue 3 + Vite アプリをPWA化する実践ガイド
-このガイドでは、既存のVue 3 + Viteで作成されたアプリケーションを、PWA（Progressive Web App）に対応させるための手順と、よくある問題の解決策（Tips）を解説します。
+```markdown
+# Vue 3 + Vite アプリをPWA化する実践ガイド
 
-PWAとは？
-PWAは、Webサイトをネイティブアプリのようにデスクトップやスマートフォンのホーム画面にインストール可能にする技術です。オフラインでも動作し、プッシュ通知などの機能も実装できます。
+このガイドでは、既存のVue 3 + Viteで作成されたアプリケーションを、PWA（Progressive Web App）に対応させるための手順と、よくある問題の解決策（Tips）を紹介します。
 
-PWA化の手順
-ステップ1: 作業ブランチの作成
+---
+
+## PWAとは？
+
+PWAは、Webサイトをネイティブアプリのようにデスクトップやスマートフォンのホーム画面にインストール可能にする技術です。オフラインでも動作します。
+
+---
+
+## PWA化の手順
+
+### ステップ1: 作業ブランチの作成
+
 安全に作業を進めるため、まずPWA化専用の新しいブランチを作成します。
 
+```sh
 # ターミナルでプロジェクトのルートディレクトリに移動
 git checkout -b feature/pwa-implementation
+```
 
-ステップ2: PWAプラグインの導入
-ViteプロジェクトのPWA化を簡単にするためのプラグイン vite-plugin-pwa をインストールします。
+---
 
+### ステップ2: PWAプラグインの導入
+
+ViteプロジェクトのPWA化を簡単にするためのプラグイン [vite-plugin-pwa](https://vite-pwa-org.netlify.app/) をインストールします。
+
+```sh
 npm install vite-plugin-pwa -D
+```
 
-ステップ3: アプリアイコンの準備
-PWAとしてインストールされる際に表示されるアプリアイコンを用意します。最低でも以下の2つのサイズのPNG画像を用意し、public ディレクトリ直下に配置してください。
+---
 
-icon-192x192.png
+### ステップ3: アプリアイコンの準備
 
-icon-512x512.png
+PWAとしてインストールされる際に表示されるアプリアイコンを用意します。  
+最低でも以下の2つのサイズのPNG画像を用意し、`public` ディレクトリ直下に配置します。
 
-フォルダ構成の例:
+- `icon-192x192.png`
+- `icon-512x512.png`
 
+**フォルダ構成の例:**
+
+```
 your-project/
 ├── public/
 │   ├── icon-192x192.png  <-- ここに配置
@@ -32,12 +52,18 @@ your-project/
 │   └── favicon.ico
 ├── src/
 └── vite.config.ts
+```
 
-ステップ4: vite.config.ts の設定
-Viteの設定ファイルに、PWAプラグインの読み込みと、マニフェストファイル（アプリ情報）の設定を追記します。
+---
 
-【重要】 この設定には、ビルドエラーを防ぐための**パスエイリアス (resolve.alias)と、GitHub Pagesなどサブディレクトリに公開する場合に必要なbase**の設定も含まれています。
+### ステップ4: vite.config.ts の設定
 
+Viteの設定ファイルに、PWAプラグインの読み込みとマニフェストファイル（アプリ情報）の設定を追記します。
+
+> **重要**  
+> この設定には、ビルドエラーを防ぐための**パスエイリアス (resolve.alias)**と、GitHub Pagesなどサブディレクトリに公開する場合に必要な**base**の設定が含まれます。
+
+```ts
 // vite.config.ts
 
 import { fileURLToPath, URL } from 'node:url'
@@ -87,12 +113,15 @@ export default defineConfig({
     }
   }
 })
+```
 
-ステップ5: index.html の修正
-アプリの玄関口であるindex.htmlに、PWAとして認識されるための情報を追記します。
+---
 
-<!-- index.html -->
+### ステップ5: index.html の修正
 
+アプリの玄関口である`index.html`に、PWAとして認識されるための情報を追記します。
+
+```html
 <!DOCTYPE html>
 <html lang="ja">
   <head>
@@ -114,33 +143,56 @@ export default defineConfig({
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
+```
 
-ステップ6: 動作確認とデプロイ
-ローカルでの動作確認:
+---
 
+### ステップ6: 動作確認とデプロイ
+
+#### ローカルでの動作確認
+
+```sh
 npm run dev
+```
 
 Chromeで開き、開発者ツール（F12）の「Application」タブで「Manifest」と「Service Workers」が正しく読み込まれていることを確認します。
 
-変更内容をコミットしてプッシュ:
+#### 変更内容をコミットしてプッシュ
 
+```sh
 git add .
 git commit -m "feat: PWA化対応を追加"
 git push -u origin feature/pwa-implementation
+```
 
-デプロイ:
+#### デプロイ
 
+```sh
 npm run deploy
+```
 
-Tips: よくある問題と解決策
-問題: No manifest detected と表示される。
+---
 
-解決策: vite.config.tsのbase設定が正しいか、index.htmlの<link rel="manifest"...>のパスが正しいかを確認してください。
+## Tips: よくある問題と解決策
 
-問題: インストールアイコンが表示されない。
+### 問題: `No manifest detected` と表示される
 
-解決策: アイコンファイルがpublicディレクトリに正しく配置されているか確認してください。また、ブラウザのキャッシュが原因のことも多いため、開発者ツールの更新ボタンを右クリックし**「キャッシュの消去とハード再読み込み」**を試してください。
+**解決策:**  
+`vite.config.ts`のbase設定が正しいか、`index.html`の`<link rel="manifest" ...>`のパスが正しいかを確認してください。
 
-問題: npm run buildでCannot find module '@/'エラーが出る。
+---
 
-解決策: vite.config.tsにresolve.aliasの設定が正しく記述されているかを確認してください。
+### 問題: インストールアイコンが表示されない
+
+**解決策:**  
+アイコンファイルが`public`ディレクトリに正しく配置されているか確認してください。また、ブラウザのキャッシュが原因のことも多いため、キャッシュクリアも試してください。
+
+---
+
+### 問題: `npm run build`で`Cannot find module '@/'`エラーが出る
+
+**解決策:**  
+`vite.config.ts`に`resolve.alias`の設定が正しく記述されているかを確認してください。
+
+---
+```
