@@ -1,6 +1,6 @@
 <template>
   <div id="app" @keydown="handleKeyDown" tabindex="0">
-    <h1>数独 (Sudoku)</h1>
+    <h1>数独 (Sudoku-vue3)</h1>
 
     <!-- モード選択 -->
     <div class="mode-selector">
